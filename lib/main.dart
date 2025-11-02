@@ -1,0 +1,344 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const SurvivalSentinelApp());
+}
+
+class SurvivalSentinelApp extends StatelessWidget {
+  const SurvivalSentinelApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Survival Sentinel',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        fontFamily: 'Courier',
+        scaffoldBackgroundColor: const Color(0xFFD6D9D0),
+      ),
+      home: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: const ChatScreen(),
+        ),
+      ),
+    );
+  }
+}
+
+class ChatScreen extends StatefulWidget {
+  const ChatScreen({super.key});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _isSOSActive = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            _buildDivider(),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildUserMessage(),
+                    const SizedBox(height: 8),
+                    _buildTimestamp(),
+                    const SizedBox(height: 16),
+                    _buildAIResponse(),
+                  ],
+                ),
+              ),
+            ),
+            _buildInputArea(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _buildLighthouseIcon(),
+              const SizedBox(width: 12),
+              const Text(
+                'Survival Sentinel',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E402F),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.settings,
+                color: Colors.grey[700],
+                size: 22,
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isSOSActive = !_isSOSActive;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD67B37),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'SOS',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'OFFLINE AI',
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFF2E402F),
+              fontFamily: 'Courier',
+              letterSpacing: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLighthouseIcon() {
+    return CustomPaint(
+      size: const Size(40, 40),
+      painter: LighthousePainter(),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Container(
+      height: 3,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      color: const Color(0xFF2E402F),
+    );
+  }
+
+  Widget _buildUserMessage() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2E402F),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Text(
+        'What should I do\nin earthquake?',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontFamily: 'Courier',
+          height: 1.3,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimestamp() {
+    return Text(
+      '9:41 AM',
+      style: TextStyle(
+        color: Colors.grey[700],
+        fontSize: 13,
+      ),
+    );
+  }
+
+  Widget _buildAIResponse() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Stay steady — preparation turns struggle into strength.',
+          style: TextStyle(
+            fontSize: 15,
+            fontStyle: FontStyle.italic,
+            color: Color(0xFF2E402F),
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Wen indoors, DROP to hands and knees. COVER your head and nek. '
+          'Take shelter under a sturdy table if available. HOLD ON until the shaking stops. '
+          'Stay indoors until the shaking stops.',
+          style: TextStyle(
+            fontSize: 15,
+            color: Color(0xFF2E402F),
+            fontFamily: 'Courier',
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Avoid windows and heavy furniture that may tip over.',
+          style: TextStyle(
+            fontSize: 15,
+            color: Color(0xFFD9534F),
+            fontFamily: 'Courier',
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Stay steady — preparation turns struggle into strength.',
+          style: TextStyle(
+            fontSize: 15,
+            color: Color(0xFF2E402F),
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Stay steady — preparation turns struggle into strength.',
+          style: TextStyle(
+            fontSize: 15,
+            color: Color(0xFF2E402F),
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputArea() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5EDD3),
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                decoration: const InputDecoration(
+                  hintText: 'Message',
+                  hintStyle: TextStyle(
+                    color: Color(0xFF8B7D6B),
+                    fontSize: 16,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                ),
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF2E402F),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.arrow_forward,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                onPressed: () {
+                  // Mesaj gönder
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+}
+
+class LighthousePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.fill;
+
+    // Sarı ışık çizgileri - sol
+    paint.color = const Color(0xFFF8E58A);
+    canvas.drawRect(Rect.fromLTWH(0, size.height / 2 - 1, 8, 2), paint);
+    canvas.drawRect(Rect.fromLTWH(2, size.height / 2 - 8, 6, 2), paint);
+    canvas.drawRect(Rect.fromLTWH(2, size.height / 2 + 6, 6, 2), paint);
+
+    // Sarı ışık çizgileri - sağ
+    canvas.drawRect(Rect.fromLTWH(size.width - 8, size.height / 2 - 1, 8, 2), paint);
+    canvas.drawRect(Rect.fromLTWH(size.width - 8, size.height / 2 - 8, 6, 2), paint);
+    canvas.drawRect(Rect.fromLTWH(size.width - 8, size.height / 2 + 6, 6, 2), paint);
+
+    // Deniz feneri gövdesi
+    paint.color = const Color(0xFF2E402F);
+    final path = Path();
+    path.moveTo(size.width / 2 - 4, size.height - 5);
+    path.lineTo(size.width / 2 - 3, size.height / 2 + 5);
+    path.lineTo(size.width / 2 + 3, size.height / 2 + 5);
+    path.lineTo(size.width / 2 + 4, size.height - 5);
+    path.close();
+    canvas.drawPath(path, paint);
+
+    // Deniz feneri üst kısım (ışık odası)
+    canvas.drawRect(
+      Rect.fromLTWH(size.width / 2 - 4, size.height / 2, 8, 6),
+      paint,
+    );
+
+    // Sarı ışık
+    paint.color = const Color(0xFFF8E58A);
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2 + 3),
+      3,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
