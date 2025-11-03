@@ -26,6 +26,16 @@ jobs:
       with:
         flutter-version: '3.24.0'
         channel: 'stable'
+    
+    - name: Create model directory
+      run: mkdir -p assets/models
+    
+    - name: Download Phi-3 model
+      run: |
+        echo "Downloading Phi-3 Mini model (2.23 GB)..."
+        wget -q --show-progress https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf -O assets/models/phi-3-mini-4k-instruct-q4.gguf
+        echo "Model downloaded successfully!"
+        ls -lh assets/models/
         
     - name: Install dependencies
       run: flutter pub get
