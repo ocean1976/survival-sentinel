@@ -3,7 +3,7 @@ import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
 class AIServicePlatform {
-  static const String modelFileName = 'gemma-4-2b-it-q4.gguf';
+  static const String modelFileName = 'gemma-2-2b-it-Q4_K_M.gguf';
   static const int maxTokens = 512;
   static const List<String> stopSequences = ['<end_of_turn>', '<start_of_turn>'];
 

@@ -3,24 +3,25 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-/// Gemma 4 GGUF modelini Hugging Face'ten indirir.
+/// Gemma 2 2B IT GGUF modelini Hugging Face'ten indirir.
 /// - Uygulama belgeler dizinine kaydeder.
 /// - Range request ile resume destekler (.part dosyası).
 /// - SHA-256 checksum doğrular.
 /// - Rapor etmek için bayt ve hız callback'i sağlar.
 class ModelDownloader {
-  /// TODO: Gerçek Hugging Face URL'si ile değiştir.
-  /// Örnek: https://huggingface.co/google/gemma-4-2b-it-gguf/resolve/main/gemma-4-2b-it-q4_k_m.gguf
-  static const String modelUrl = 'https://huggingface.co/PLACEHOLDER/gemma-4-2b-it-q4.gguf';
+  /// Gemma 2 2B Instruct, Q4_K_M quantization (bartowski build).
+  /// Source: https://huggingface.co/bartowski/gemma-2-2b-it-GGUF
+  static const String modelUrl =
+      'https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf';
 
-  static const String modelFileName = 'gemma-4-2b-it-q4.gguf';
+  static const String modelFileName = 'gemma-2-2b-it-Q4_K_M.gguf';
 
-  /// TODO: Gerçek checksum ile değiştir (hex, küçük harf).
-  /// Placeholder ise doğrulama ATLANIR.
-  static const String expectedSha256 = 'PLACEHOLDER_CHECKSUM';
+  /// SHA-256 of the upstream file, verified on Hugging Face LFS metadata.
+  static const String expectedSha256 =
+      'e0aee85060f168f0f2d8473d7ea41ce2f3230c1bc1374847505ea599288a7787';
 
-  /// Yaklaşık beklenen boyut (sunucu content-length vermezse yedek).
-  static const int expectedBytes = 2300 * 1024 * 1024; // ~2.3 GB
+  /// Upstream content-length as of publish time.
+  static const int expectedBytes = 1708582752; // ~1.63 GB
 
   Future<File> modelFile() async {
     final dir = await getApplicationDocumentsDirectory();

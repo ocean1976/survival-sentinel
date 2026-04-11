@@ -13,7 +13,7 @@ class AIServicePlatform {
     await Future.delayed(const Duration(seconds: 1));
     return '''🌐 WEB DEMO MODE
 
-Haven Protocol's real AI model (Gemma 4) only runs on Android/iOS devices.
+Haven Protocol's real AI model (Gemma 2) only runs on Android/iOS devices.
 
 Your prompt was: "$prompt"''';
   }
