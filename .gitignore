@@ -42,3 +42,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Model binaries — downloaded at runtime, never committed
+*.gguf
+*.gguf.part

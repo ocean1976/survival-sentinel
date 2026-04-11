@@ -1,0 +1,721 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import '../services/ai_service.dart';
+import '../services/skill_router.dart';
+import '../services/usage_service.dart';
+import '../utils/prompt_builder.dart';
+import '../utils/theme.dart';
+import '../widgets/crt_overlay.dart';
+import '../widgets/lighthouse_icon.dart';
+import '../widgets/sos_confirm_dialog.dart';
+import '../widgets/structured_response.dart';
+import '../widgets/typing_text.dart';
+import 'settings_screen.dart';
+
+class ChatScreen extends StatefulWidget {
+  const ChatScreen({super.key});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  static const Duration _modeTransition = Duration(milliseconds: 300);
+
+  final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final AIService _aiService = AIService();
+  final SkillRouter _skillRouter = SkillRouter(language: 'tr');
+  final UsageService _usage = UsageService();
+
+  HavenTheme _theme = HavenTheme.normal;
+  bool _isLoading = false;
+  bool _isModelLoaded = false;
+  final List<ChatMessage> _messages = [];
+
+  bool _premium = false;
+  int _questionsUsed = 0;
+  Duration _sosRemaining = Duration.zero;
+  Timer? _sosTicker;
+
+  bool get _isBunker => _theme.mode == HavenMode.bunker;
+  bool get _sosActive => _sosRemaining > Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAI();
+  }
+
+  Future<void> _initializeAI() async {
+    setState(() => _isLoading = true);
+    try {
+      await _skillRouter.load();
+      await _aiService.initialize();
+      await _syncUsage();
+      if (await _usage.isSOSActive()) {
+        setState(() => _theme = HavenTheme.bunker);
+        _startSOSTicker();
+      }
+      setState(() {
+        _isModelLoaded = true;
+        _isLoading = false;
+      });
+      _addMessage(ChatMessage(
+        text: 'Haven Protocol aktif. Acil bir durum mu var?\n'
+            'Durumunuzu anlatın, adım adım yönlendireceğim.',
+        isUser: false,
+      ));
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showError('AI modeli yüklenemedi: $e');
+    }
+  }
+
+  void _addMessage(ChatMessage message) {
+    setState(() => _messages.add(message));
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || !_isModelLoaded) return;
+
+    if (!await _usage.canAskQuestion()) {
+      _addMessage(ChatMessage(
+        text: 'Günlük ${UsageService.dailyLimit} soru limitiniz doldu.\n'
+            'Yarın sıfırlanır. Acil bir durumdaysanız SOS modunu kullanın '
+            'veya Premium\'a yükseltin.',
+        isUser: false,
+        typingDone: true,
+      ));
+      return;
+    }
+
+    _messageController.clear();
+    _addMessage(ChatMessage(text: text, isUser: true, typingDone: true));
+    setState(() => _isLoading = true);
+
+    try {
+      final skill = _skillRouter.match(text);
+      final formattedPrompt = PromptBuilder.build(
+        userMessage: text,
+        skill: skill,
+        language: 'tr',
+      );
+      final response = await _aiService.generateResponse(formattedPrompt);
+      await _usage.recordQuestion();
+      await _syncUsage();
+      setState(() => _isLoading = false);
+      _addMessage(ChatMessage(text: response, isUser: false));
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showError('Hata: $e');
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _onSOSPressed() async {
+    if (_isBunker) {
+      await _usage.deactivateSOS();
+      _stopSOSTicker();
+      await _syncUsage();
+      setState(() => _theme = HavenTheme.normal);
+      return;
+    }
+
+    if (!await _usage.canActivateSOS()) {
+      final remaining = await _usage.sosCooldownRemaining();
+      _showError(
+          'SOS modu 30 günde bir kez kullanılabilir. Kalan süre: ${_formatDuration(remaining)}');
+      return;
+    }
+
+    final confirmed = await showSOSConfirmDialog(context);
+    if (confirmed == true) {
+      await _usage.activateSOS();
+      await _syncUsage();
+      _startSOSTicker();
+      setState(() => _theme = HavenTheme.bunker);
+    }
+  }
+
+  Future<void> _syncUsage() async {
+    final premium = await _usage.isPremium();
+    final used = await _usage.questionsToday();
+    final remaining = await _usage.sosRemaining();
+    if (!mounted) return;
+    setState(() {
+      _premium = premium;
+      _questionsUsed = used;
+      _sosRemaining = remaining;
+    });
+  }
+
+  void _startSOSTicker() {
+    _sosTicker?.cancel();
+    _sosTicker = Timer.periodic(const Duration(seconds: 1), (_) async {
+      final remaining = await _usage.sosRemaining();
+      if (!mounted) return;
+      setState(() => _sosRemaining = remaining);
+      if (remaining == Duration.zero) {
+        _stopSOSTicker();
+        await _usage.deactivateSOS();
+        setState(() => _theme = HavenTheme.normal);
+      }
+    });
+  }
+
+  void _stopSOSTicker() {
+    _sosTicker?.cancel();
+    _sosTicker = null;
+  }
+
+  String _formatDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '${h.toString().padLeft(2, '0')}:$m:$s';
+  }
+
+  void _openSettings() {
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) => SettingsScreen(
+              theme: _theme,
+              usage: _usage,
+              onClearChat: _clearChat,
+            ),
+          ),
+        )
+        .then((_) => _syncUsage());
+  }
+
+  void _clearChat() {
+    setState(() => _messages.clear());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: _modeTransition,
+      color: _theme.background,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Column(
+                    children: [
+                      _buildHeader(),
+                      _buildDivider(),
+                      Expanded(
+                        child: _isModelLoaded
+                            ? _buildChatArea()
+                            : _buildLoadingScreen(),
+                      ),
+                      if (_isModelLoaded) _buildDisclaimerBar(),
+                      if (_isModelLoaded) _buildInputArea(),
+                    ],
+                  ),
+                ),
+              ),
+              if (_isBunker)
+                const Positioned.fill(
+                  child: IgnorePointer(child: CRTOverlay()),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: _theme.primary),
+          const SizedBox(height: 20),
+          Text(
+            'AI modeli yükleniyor...\nBu bir dakika sürebilir.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _theme.textMuted, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatArea() {
+    return AnimatedContainer(
+      duration: _modeTransition,
+      color: _theme.background,
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16),
+        itemCount: _messages.length + (_isLoading ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == _messages.length) return _buildTypingIndicator();
+          final message = _messages[index];
+          return Padding(
+            key: ValueKey('msg_$index'),
+            padding: const EdgeInsets.only(bottom: 16),
+            child: message.isUser
+                ? _buildUserMessage(message)
+                : _buildAIResponse(message),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Text(
+            'Düşünüyor...',
+            style: TextStyle(
+              color: _theme.textMuted,
+              fontStyle: FontStyle.italic,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: _theme.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AnimatedContainer(
+      duration: _modeTransition,
+      color: _theme.headerBg,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (!_isBunker)
+                GestureDetector(
+                  onTap: _openSettings,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _theme.surface,
+                      border: Border.all(color: _theme.headerBorder),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      '[=]',
+                      style: TextStyle(
+                        color: _theme.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              if (!_isBunker) const SizedBox(width: 10),
+              LighthouseIcon(color: _theme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: AnimatedDefaultTextStyle(
+                  duration: _modeTransition,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: _theme.primary,
+                    letterSpacing: 2,
+                  ),
+                  child: const Text('HAVEN PROTOCOL'),
+                ),
+              ),
+              _buildSOSButton(),
+            ],
+          ),
+          const SizedBox(height: 4),
+          AnimatedDefaultTextStyle(
+            duration: _modeTransition,
+            style: TextStyle(
+              fontSize: 11,
+              color: _theme.primaryDim,
+              letterSpacing: 1.2,
+            ),
+            child: Text(_isBunker
+                ? 'SURVIVAL AI // SOS ACTIVE'
+                : 'SURVIVAL AI // OFFLINE'),
+          ),
+          const SizedBox(height: 6),
+          _buildInfoBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: _theme.surface,
+        border: Border.all(color: _theme.headerBorder),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Row(
+        children: [
+          if (_sosActive) ...[
+            Expanded(
+              child: Text(
+                '[!] SOS — SINIRSIZ ERİŞİM',
+                style: TextStyle(
+                  color: _theme.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+            Text(
+              _formatDuration(_sosRemaining),
+              style: TextStyle(
+                color: _theme.critical,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
+            ),
+          ] else ...[
+            Expanded(
+              child: Text(
+                _premium
+                    ? 'PREMIUM — SINIRSIZ'
+                    : 'SORU: $_questionsUsed/${UsageService.dailyLimit}',
+                style: TextStyle(
+                  color: _theme.textMuted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+            if (!_premium)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF8B6914), Color(0xFFC9A227)],
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: const Text(
+                  '[*] PREMIUM',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSOSButton() {
+    return GestureDetector(
+      onTap: _onSOSPressed,
+      child: AnimatedContainer(
+        duration: _modeTransition,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: _theme.sosGradient,
+          ),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: _theme.sosBorder),
+          boxShadow: [
+            BoxShadow(
+              color: _theme.sosGradient.first.withValues(alpha: 0.4),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Text(
+          '[!] SOS',
+          style: TextStyle(
+            color: _theme.sosText,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return AnimatedContainer(
+      duration: _modeTransition,
+      height: 2,
+      color: _theme.divider,
+    );
+  }
+
+  Widget _buildUserMessage(ChatMessage message) {
+    final timestamp = _formatTime(message.timestamp);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'KULLANICI@haven:~\$',
+              style: TextStyle(
+                fontSize: 9,
+                color: _theme.userLabel,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
+            ),
+            Text(
+              '[$timestamp UTC]',
+              style: TextStyle(fontSize: 9, color: _theme.textSubtle),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          decoration: BoxDecoration(
+            color: _theme.userBg,
+            border: Border(
+              left: BorderSide(color: _theme.userBorder, width: 3),
+            ),
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(4),
+              bottomRight: Radius.circular(4),
+            ),
+          ),
+          child: Text(
+            message.text,
+            style: TextStyle(
+              color: _theme.messageText,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAIResponse(ChatMessage message) {
+    final timestamp = _formatTime(message.timestamp);
+    final textStyle = TextStyle(
+      color: _theme.messageText,
+      fontSize: 14,
+      height: 1.55,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'HAVEN://response',
+              style: TextStyle(
+                fontSize: 9,
+                color: _theme.aiLabel,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
+            ),
+            Text(
+              '[$timestamp UTC]',
+              style: TextStyle(fontSize: 9, color: _theme.textSubtle),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          decoration: BoxDecoration(
+            color: _theme.aiBg,
+            border: Border(
+              left: BorderSide(color: _theme.aiBorder, width: 3),
+            ),
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(4),
+              bottomRight: Radius.circular(4),
+            ),
+          ),
+          child: message.typingDone
+              ? StructuredResponse(text: message.text, theme: _theme)
+              : TypingText(
+                  key: ValueKey(
+                      'typing_${message.timestamp.microsecondsSinceEpoch}'),
+                  text: message.text,
+                  style: textStyle,
+                  cursorColor: _theme.cursor,
+                  onProgress: _scrollToBottom,
+                  onComplete: () {
+                    if (!mounted) return;
+                    setState(() => message.typingDone = true);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDisclaimerBar() {
+    return AnimatedContainer(
+      duration: _modeTransition,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: _theme.disclaimerBg,
+        border: Border(top: BorderSide(color: _theme.disclaimerBorder)),
+      ),
+      child: Text(
+        '[+] BU BİLGİ PROFESYONEL YARDIMIN YERİNİ ALMAZ',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: _theme.disclaimerText,
+          fontSize: 9,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputArea() {
+    return AnimatedContainer(
+      duration: _modeTransition,
+      color: _theme.inputBg,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _theme.inputFieldBg,
+          border: Border.all(color: _theme.inputBorder),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 4, 0),
+              child: Text(
+                '>',
+                style: TextStyle(
+                  color: _theme.inputPrompt,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                enabled: !_isLoading,
+                style: TextStyle(fontSize: 13, color: _theme.inputText),
+                decoration: InputDecoration(
+                  hintText: 'Ne oldu? Durumunuzu anlatın...',
+                  hintStyle: TextStyle(
+                    color: _theme.inputText.withValues(alpha: 0.4),
+                    fontSize: 13,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onSubmitted: (_) => _sendMessage(),
+              ),
+            ),
+            Container(
+              color: _theme.sendBg,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: GestureDetector(
+                onTap: _isLoading ? null : _sendMessage,
+                child: Text(
+                  '▶',
+                  style: TextStyle(color: _theme.primary, fontSize: 14),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTime(DateTime dt) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(dt.hour)}:${two(dt.minute)}:${two(dt.second)}';
+  }
+
+  @override
+  void dispose() {
+    _sosTicker?.cancel();
+    _messageController.dispose();
+    _scrollController.dispose();
+    _aiService.dispose();
+    super.dispose();
+  }
+}
+
+class ChatMessage {
+  final String text;
+  final bool isUser;
+  final DateTime timestamp;
+  bool typingDone;
+
+  ChatMessage({
+    required this.text,
+    required this.isUser,
+    DateTime? timestamp,
+    this.typingDone = false,
+  }) : timestamp = timestamp ?? DateTime.now().toUtc();
+}

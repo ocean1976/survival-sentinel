@@ -1,8 +1,6 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-
-// Conditional imports - sadece mobil/desktop için
 import 'ai_service_mobile.dart' if (dart.library.html) 'ai_service_web.dart';
+
+typedef InitProgressCallback = void Function(int stage, int total, String label);
 
 class AIService {
   late final AIServicePlatform _platform;
@@ -12,9 +10,12 @@ class AIService {
     _platform = AIServicePlatform();
   }
 
-  Future<void> initialize() async {
-    if (_isInitialized) return;
-    await _platform.initialize();
+  Future<void> initialize({InitProgressCallback? onProgress}) async {
+    if (_isInitialized) {
+      onProgress?.call(3, 3, 'Hazır');
+      return;
+    }
+    await _platform.initialize(onProgress: onProgress);
     _isInitialized = true;
   }
 
