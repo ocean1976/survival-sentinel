@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/parsed_response.dart';
 import '../utils/theme.dart';
 
+/// Rendering aligned to docs/chat_screen_design.jsx — §ACİL EYLEM block
+/// is a padded tinted card, §PROTOKOL/KRİTİK have a divider between them,
+/// every AI message closes with an inline disclaimer card + blinking-like
+/// cursor glyph.
 class StructuredResponse extends StatelessWidget {
   final String text;
   final HavenTheme theme;
@@ -12,31 +16,59 @@ class StructuredResponse extends StatelessWidget {
     required this.theme,
   });
 
+  bool get _isBunker => theme.mode == HavenMode.bunker;
+
   @override
   Widget build(BuildContext context) {
     final parsed = ParsedResponse.parse(text);
 
     if (!parsed.hasStructure) {
-      return Text(
-        text,
-        style: TextStyle(
-          color: theme.messageText,
-          fontSize: 14,
-          height: 1.55,
-        ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(text, style: _bodyStyle),
+          const SizedBox(height: 10),
+          _inlineDisclaimer(),
+        ],
       );
     }
 
+    final widgets = <Widget>[];
+    for (int i = 0; i < parsed.blocks.length; i++) {
+      final block = parsed.blocks[i];
+      widgets.add(_blockWidget(block));
+
+      // Divider between PROTOKOL and KRİTİK blocks
+      if (i + 1 < parsed.blocks.length) {
+        final next = parsed.blocks[i + 1];
+        final needsDivider = block.kind == BlockKind.protocol &&
+            next.kind == BlockKind.critical;
+        widgets.add(SizedBox(height: needsDivider ? 10 : 8));
+        if (needsDivider) {
+          widgets.add(Container(
+            height: 1,
+            color: theme.divider,
+            margin: const EdgeInsets.only(bottom: 10),
+          ));
+        }
+      }
+    }
+    widgets.add(const SizedBox(height: 10));
+    widgets.add(_inlineDisclaimer());
+    widgets.add(const SizedBox(height: 2));
+    widgets.add(Text('█', style: TextStyle(color: theme.cursor, fontSize: 13)));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int i = 0; i < parsed.blocks.length; i++) ...[
-          _blockWidget(parsed.blocks[i]),
-          if (i < parsed.blocks.length - 1) const SizedBox(height: 10),
-        ],
-      ],
+      children: widgets,
     );
   }
+
+  TextStyle get _bodyStyle => TextStyle(
+        color: theme.messageText,
+        fontSize: 13,
+        height: 1.6,
+      );
 
   Widget _blockWidget(ResponseBlock block) {
     switch (block.kind) {
@@ -47,29 +79,30 @@ class StructuredResponse extends StatelessWidget {
       case BlockKind.critical:
         return _critical(block as CriticalBlock);
       case BlockKind.plain:
-        return _plain(block as PlainBlock);
+        return Text((block as PlainBlock).text, style: _bodyStyle);
     }
   }
 
   Widget _urgent(UrgentBlock block) {
+    final bg = _isBunker
+        ? const Color(0xFF1A0C08)
+        : const Color(0xFFF5E8E4);
+    final border = _isBunker
+        ? const Color(0xFF3A1818)
+        : const Color(0xFFE8C8C0);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
       decoration: BoxDecoration(
-        color: theme.urgent.withValues(alpha: 0.12),
-        border: Border(
-          left: BorderSide(color: theme.urgent, width: 3),
-        ),
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(3),
-          bottomRight: Radius.circular(3),
-        ),
+        color: bg,
+        border: Border.all(color: border),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '▲ ACİL',
+            '▲ ACİL EYLEM',
             style: TextStyle(
               color: theme.urgent,
               fontSize: 13,
@@ -80,12 +113,7 @@ class StructuredResponse extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             block.text,
-            style: TextStyle(
-              color: theme.messageText,
-              fontSize: 14,
-              height: 1.5,
-              fontWeight: FontWeight.w600,
-            ),
+            style: _bodyStyle.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -108,7 +136,7 @@ class StructuredResponse extends StatelessWidget {
         const SizedBox(height: 4),
         for (int i = 0; i < block.steps.length; i++)
           Padding(
-            padding: const EdgeInsets.only(bottom: 3, left: 4),
+            padding: const EdgeInsets.only(bottom: 3, left: 2),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -116,21 +144,14 @@ class StructuredResponse extends StatelessWidget {
                   '${(i + 1).toString().padLeft(2, '0')}.',
                   style: TextStyle(
                     color: theme.protocol,
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    height: 1.5,
+                    height: 1.6,
                   ),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(
-                    block.steps[i],
-                    style: TextStyle(
-                      color: theme.messageText,
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
-                  ),
+                  child: Text(block.steps[i], style: _bodyStyle),
                 ),
               ],
             ),
@@ -155,7 +176,7 @@ class StructuredResponse extends StatelessWidget {
         const SizedBox(height: 4),
         for (final warning in block.warnings)
           Padding(
-            padding: const EdgeInsets.only(bottom: 3, left: 4),
+            padding: const EdgeInsets.only(bottom: 3, left: 2),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -163,21 +184,14 @@ class StructuredResponse extends StatelessWidget {
                   '—',
                   style: TextStyle(
                     color: theme.critical,
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    height: 1.5,
+                    height: 1.6,
                   ),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(
-                    warning,
-                    style: TextStyle(
-                      color: theme.messageText,
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
-                  ),
+                  child: Text(warning, style: _bodyStyle),
                 ),
               ],
             ),
@@ -186,13 +200,24 @@ class StructuredResponse extends StatelessWidget {
     );
   }
 
-  Widget _plain(PlainBlock block) {
-    return Text(
-      block.text,
-      style: TextStyle(
-        color: theme.messageText,
-        fontSize: 14,
-        height: 1.55,
+  Widget _inlineDisclaimer() {
+    final bg = _isBunker
+        ? const Color(0xFF0A0C06)
+        : const Color(0xFFD8DCD4);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        border: Border.all(color: theme.divider),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Text(
+        '⚕️ Bu bilgi profesyonel yardımın yerini almaz.',
+        style: TextStyle(
+          color: theme.textMuted,
+          fontSize: 10,
+        ),
       ),
     );
   }

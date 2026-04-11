@@ -7,7 +7,6 @@ import '../utils/prompt_builder.dart';
 import '../utils/strings.dart';
 import '../utils/theme.dart';
 import '../widgets/crt_overlay.dart';
-import '../widgets/lighthouse_icon.dart';
 import '../widgets/sos_confirm_dialog.dart';
 import '../widgets/structured_response.dart';
 import '../widgets/typing_text.dart';
@@ -33,6 +32,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
   bool _isModelLoaded = false;
   bool _mockMode = false;
+  bool _mockFromFailure = false; // true only if user tried real AI and it failed
   bool _crashLoopDetected = false;
   String? _initError;
   final List<ChatMessage> _messages = [];
@@ -105,6 +105,7 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _isLoading = false;
         _initError = e.toString();
+        _mockFromFailure = true;
       });
     }
   }
@@ -306,8 +307,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Column(
                     children: [
                       _buildHeader(),
-                      _buildDivider(),
-                      if (_mockMode) _buildMockBanner(),
+                      if (_mockMode && _mockFromFailure) _buildMockBanner(),
                       Expanded(
                         child: _isModelLoaded
                             ? _buildChatArea()
@@ -458,19 +458,45 @@ class _ChatScreenState extends State<ChatScreen> {
       color: _theme.background,
       child: ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
-        itemCount: _messages.length + (_isLoading ? 1 : 0),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+        itemCount: _messages.length + (_isLoading ? 1 : 0) + 1,
         itemBuilder: (context, index) {
-          if (index == _messages.length) return _buildTypingIndicator();
-          final message = _messages[index];
+          if (index == 0) return _buildOfflineBanner();
+          final adjusted = index - 1;
+          if (adjusted == _messages.length) return _buildTypingIndicator();
+          final message = _messages[adjusted];
           return Padding(
-            key: ValueKey('msg_$index'),
-            padding: const EdgeInsets.only(bottom: 16),
+            key: ValueKey('msg_$adjusted'),
+            padding: const EdgeInsets.only(bottom: 10),
             child: message.isUser
                 ? _buildUserMessage(message)
                 : _buildAIResponse(message),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildOfflineBanner() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: _theme.disclaimerBg,
+          border: Border.all(color: _theme.disclaimerBorder),
+          borderRadius: BorderRadius.circular(2),
+        ),
+        child: Text(
+          '══ TÜM VERİLER CİHAZDA — İNTERNET GEREKMİYOR ══',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _theme.disclaimerText,
+            fontSize: 9,
+            letterSpacing: 1,
+          ),
+        ),
       ),
     );
   }
@@ -505,65 +531,70 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildHeader() {
     return AnimatedContainer(
       duration: _modeTransition,
-      color: _theme.headerBg,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      decoration: BoxDecoration(
+        color: _theme.headerBg,
+        border: Border(
+          bottom: BorderSide(color: _theme.headerBorder, width: 2),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (!_isBunker)
-                GestureDetector(
-                  onTap: _openSettings,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _theme.surface,
-                      border: Border.all(color: _theme.headerBorder),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      '[=]',
-                      style: TextStyle(
-                        color: _theme.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+              GestureDetector(
+                onTap: _openSettings,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _theme.surface,
+                    border: Border.all(color: _theme.headerBorder),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '[=]',
+                    style: TextStyle(
+                      color: _theme.textMuted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              if (!_isBunker) const SizedBox(width: 10),
-              LighthouseIcon(color: _theme.primary),
-              const SizedBox(width: 10),
+              ),
               Expanded(
-                child: AnimatedDefaultTextStyle(
-                  duration: _modeTransition,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: _theme.primary,
-                    letterSpacing: 2,
-                  ),
-                  child: const Text('HAVEN PROTOCOL'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'HAVEN PROTOCOL',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: _theme.primary,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      _isBunker
+                          ? S.current.appTaglineSosActive
+                          : S.current.appTagline,
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: _theme.primaryDim,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               _buildSOSButton(),
             ],
           ),
-          const SizedBox(height: 4),
-          AnimatedDefaultTextStyle(
-            duration: _modeTransition,
-            style: TextStyle(
-              fontSize: 11,
-              color: _theme.primaryDim,
-              letterSpacing: 1.2,
-            ),
-            child: Text(_isBunker
-                ? S.current.appTaglineSosActive
-                : S.current.appTagline),
-          ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           _buildInfoBar(),
         ],
       ),
@@ -572,7 +603,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildInfoBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: _theme.surface,
         border: Border.all(color: _theme.headerBorder),
@@ -583,22 +614,13 @@ class _ChatScreenState extends State<ChatScreen> {
           if (_sosActive) ...[
             Expanded(
               child: Text(
-                S.current.sosActiveLabel,
+                '${S.current.sosActiveLabel}  ${_formatDuration(_sosRemaining)}',
                 style: TextStyle(
-                  color: _theme.primary,
+                  color: _theme.urgent,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
                 ),
-              ),
-            ),
-            Text(
-              _formatDuration(_sosRemaining),
-              style: TextStyle(
-                color: _theme.critical,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
               ),
             ),
           ] else ...[
@@ -611,7 +633,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         'total': UsageService.dailyLimit.toString(),
                       }),
                 style: TextStyle(
-                  color: _theme.textMuted,
+                  color: _theme.textPrimary,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
@@ -624,6 +646,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                     colors: [Color(0xFF8B6914), Color(0xFFC9A227)],
                   ),
                   borderRadius: BorderRadius.circular(2),
@@ -632,7 +656,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   S.current.premiumBadge,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 9,
+                    fontSize: 8,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
                   ),
@@ -679,14 +703,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildDivider() {
-    return AnimatedContainer(
-      duration: _modeTransition,
-      height: 2,
-      color: _theme.divider,
-    );
-  }
-
   Widget _buildUserMessage(ChatMessage message) {
     final timestamp = _formatTime(message.timestamp);
     return Column(
@@ -698,7 +714,7 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(
               S.current.userLabel,
               style: TextStyle(
-                fontSize: 9,
+                fontSize: 8,
                 color: _theme.userLabel,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
@@ -706,14 +722,14 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             Text(
               '[$timestamp UTC]',
-              style: TextStyle(fontSize: 9, color: _theme.textSubtle),
+              style: TextStyle(fontSize: 8, color: _theme.textSubtle),
             ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 1),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          padding: const EdgeInsets.fromLTRB(10, 7, 10, 7),
           decoration: BoxDecoration(
             color: _theme.userBg,
             border: Border(
@@ -728,8 +744,8 @@ class _ChatScreenState extends State<ChatScreen> {
             message.text,
             style: TextStyle(
               color: _theme.messageText,
-              fontSize: 14,
-              height: 1.5,
+              fontSize: 13,
+              height: 1.55,
             ),
           ),
         ),
@@ -741,8 +757,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final timestamp = _formatTime(message.timestamp);
     final textStyle = TextStyle(
       color: _theme.messageText,
-      fontSize: 14,
-      height: 1.55,
+      fontSize: 13,
+      height: 1.6,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -753,7 +769,7 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(
               S.current.aiLabel,
               style: TextStyle(
-                fontSize: 9,
+                fontSize: 8,
                 color: _theme.aiLabel,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
@@ -761,14 +777,14 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             Text(
               '[$timestamp UTC]',
-              style: TextStyle(fontSize: 9, color: _theme.textSubtle),
+              style: TextStyle(fontSize: 8, color: _theme.textSubtle),
             ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 1),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          padding: const EdgeInsets.fromLTRB(10, 7, 10, 7),
           decoration: BoxDecoration(
             color: _theme.aiBg,
             border: Border(
