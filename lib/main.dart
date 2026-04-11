@@ -3,6 +3,7 @@ import 'screens/chat_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/model_downloader.dart';
 import 'services/usage_service.dart';
+import 'utils/strings.dart';
 import 'utils/theme.dart';
 import 'widgets/lighthouse_icon.dart';
 
@@ -15,11 +16,16 @@ class HavenProtocolApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Haven Protocol',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(fontFamily: 'Courier'),
-      home: const AppRoot(),
+    return ValueListenableBuilder<String>(
+      valueListenable: S.language,
+      builder: (context, _, __) {
+        return MaterialApp(
+          title: 'Haven Protocol',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(fontFamily: 'Courier'),
+          home: const AppRoot(),
+        );
+      },
     );
   }
 }
@@ -44,6 +50,8 @@ class _AppRootState extends State<AppRoot> {
   }
 
   Future<void> _decide() async {
+    final lang = await _usage.getLanguage();
+    S.language.value = lang;
     final completed = await _usage.isOnboardingComplete();
     final modelReady = await _downloader.isModelReady();
     if (!mounted) return;

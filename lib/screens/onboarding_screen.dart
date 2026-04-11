@@ -2,6 +2,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import '../services/model_downloader.dart';
 import '../services/usage_service.dart';
+import '../utils/strings.dart';
 import '../utils/theme.dart';
 import '../widgets/lighthouse_icon.dart';
 
@@ -93,12 +94,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<bool?> _showMobileDataDialog() {
+    final s = S.current;
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: _theme.surface,
         title: Text(
-          'WIFI BULUNAMADI',
+          s.onbWifiDialogTitle,
           style: TextStyle(
             color: _theme.urgent,
             fontSize: 14,
@@ -107,8 +109,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ),
         content: Text(
-          'AI modeli yaklaşık 2.3 GB. WiFi'
-          ' olmadan indirme ücretlendirilebilir. Yine de devam etmek ister misin?',
+          s.onbWifiDialogBody,
           style: TextStyle(
             color: _theme.textPrimary,
             fontSize: 12,
@@ -119,14 +120,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'İPTAL',
+              s.onbWifiDialogCancel,
               style: TextStyle(color: _theme.textMuted),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              'DEVAM ET',
+              s.onbWifiDialogContinue,
               style: TextStyle(color: _theme.urgent),
             ),
           ),
@@ -138,7 +139,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _runDownload() async {
     setState(() {
       _phase = _DownloadPhase.downloading;
-      _stageLabel = 'Bağlanılıyor...';
+      _stageLabel = S.current.onbConnecting;
     });
 
     final result = await _downloader.download(
@@ -149,7 +150,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _total = total;
           _bytesPerSec = bps;
           if (_phase == _DownloadPhase.downloading) {
-            _stageLabel = 'İndiriliyor';
+            _stageLabel = S.current.onbDownloading;
           }
         });
       },
@@ -157,7 +158,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         if (!mounted) return;
         setState(() {
           _stageLabel = stage;
-          if (stage.contains('doğrulan')) {
+          final lower = stage.toLowerCase();
+          if (lower.contains('doğrulan') || lower.contains('verif')) {
             _phase = _DownloadPhase.verifying;
           }
         });
@@ -249,13 +251,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _welcomePage() {
+    final s = S.current;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'HAVEN://welcome',
+            s.onbWelcomeLabel,
             style: TextStyle(
               color: _theme.aiLabel,
               fontSize: 10,
@@ -265,7 +268,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Hoş geldin.',
+            s.onbWelcomeTitle,
             style: TextStyle(
               color: _theme.primary,
               fontSize: 28,
@@ -274,7 +277,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Haven Protocol — afet ve acil durumlar için tasarlanmış, %100 offline çalışan hayatta kalma asistanın.',
+            s.onbWelcomeBody,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: _theme.textPrimary,
@@ -283,19 +286,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
           const SizedBox(height: 28),
-          _tag('OFFLINE'),
+          _tag(s.onbTagOffline),
           const SizedBox(height: 8),
-          _tag('LIFE-SAVING'),
+          _tag(s.onbTagLifeSaving),
           const SizedBox(height: 8),
-          _tag('NO TRACKING'),
+          _tag(s.onbTagNoTracking),
           const Spacer(),
-          _primaryButton('BAŞLA →', _next),
+          _primaryButton(s.onbStartButton, _next),
         ],
       ),
     );
   }
 
   Widget _featuresPage() {
+    final s = S.current;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
       child: Column(
@@ -303,7 +307,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           const SizedBox(height: 10),
           Text(
-            'SENTINEL NE YAPAR?',
+            s.onbFeaturesLabel,
             style: TextStyle(
               color: _theme.aiLabel,
               fontSize: 10,
@@ -313,7 +317,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Afet anında bilgiye\nerişmeni sağlar.',
+            s.onbFeaturesTitle,
             style: TextStyle(
               color: _theme.primary,
               fontSize: 24,
@@ -322,16 +326,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          _feature('▲', 'Deprem, yangın, sel, tsunami',
-              'FEMA ve FM 21-76 protokollerine göre adım adım rehber.'),
-          _feature('▲', 'İlk yardım ve kurtarma',
-              'CPR, kanama, yanık, kırık — kısa ve uygulanabilir.'),
-          _feature('▲', 'Kimyasal, nükleer, pandemi',
-              'CDC ve WHO verileriyle hazırlanmış kritik müdahaleler.'),
-          _feature('▲', 'Barınak, su, sinyal',
-              'Doğada hayatta kalma — Army FM kaynaklı.'),
+          _feature('▲', s.onbFeatureDisastersTitle, s.onbFeatureDisastersSub),
+          _feature('▲', s.onbFeatureFirstAidTitle, s.onbFeatureFirstAidSub),
+          _feature('▲', s.onbFeatureChemNucTitle, s.onbFeatureChemNucSub),
+          _feature('▲', s.onbFeatureShelterTitle, s.onbFeatureShelterSub),
           const Spacer(),
-          _primaryButton('DEVAM →', _next),
+          _primaryButton(s.onbContinueButton, _next),
         ],
       ),
     );
@@ -344,7 +344,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           const SizedBox(height: 10),
           Text(
-            'MODEL KURULUMU',
+            S.current.onbSetupLabel,
             style: TextStyle(
               color: _theme.aiLabel,
               fontSize: 10,
@@ -371,19 +371,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   String _setupTitle() {
+    final s = S.current;
     switch (_phase) {
       case _DownloadPhase.idle:
-        return 'AI modelini indir.';
+        return s.onbSetupTitleIdle;
       case _DownloadPhase.checkingWifi:
-        return 'Bağlantı kontrol ediliyor...';
+        return s.onbSetupTitleChecking;
       case _DownloadPhase.downloading:
-        return 'İndiriliyor...';
+        return s.onbSetupTitleDownloading;
       case _DownloadPhase.verifying:
-        return 'Doğrulanıyor...';
+        return s.onbSetupTitleVerifying;
       case _DownloadPhase.done:
-        return 'Hazırsın.';
+        return s.onbSetupTitleDone;
       case _DownloadPhase.error:
-        return 'İndirme başarısız.';
+        return s.onbSetupTitleError;
     }
   }
 
@@ -403,24 +404,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _idleBody() {
+    final s = S.current;
     return Column(
       children: [
         _infoCard(
-          title: 'GEREKSİNİMLER',
-          items: const [
-            '• ~2.3 GB boş depolama alanı',
-            '• WiFi bağlantısı (önerilir)',
-            '• İlk kurulum 5-20 dakika sürer',
-            '• Kurulumdan sonra internet gerekmez',
+          title: s.onbReqTitle,
+          items: [
+            s.onbReqStorage,
+            s.onbReqWifi,
+            s.onbReqDuration,
+            s.onbReqOfflineAfter,
           ],
         ),
         const SizedBox(height: 12),
         _infoCard(
-          title: 'GİZLİLİK',
-          items: const [
-            '• Model cihazında kalır',
-            '• Sorular sunucuya gönderilmez',
-            '• Veri toplanmaz, analiz yapılmaz',
+          title: s.onbPrivacyTitle,
+          items: [
+            s.onbPrivacyStays,
+            s.onbPrivacyNoUpload,
+            s.onbPrivacyNoAnalytics,
           ],
         ),
         if (_wifiChecked && !_onWifi) ...[
@@ -433,7 +435,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              '⚠ WiFi bağlantısı tespit edilmedi. Mobil veri kullanmak pahalı olabilir.',
+              s.onbNoWifiWarning,
               style: TextStyle(color: _theme.urgent, fontSize: 11),
             ),
           ),
@@ -516,7 +518,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Uygulamayı kapatma. Bağlantı koparsa kaldığı yerden devam eder.',
+            S.current.onbKeepOpen,
             style: TextStyle(
               color: _theme.textSubtle,
               fontSize: 10,
@@ -528,6 +530,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _doneBody() {
+    final s = S.current;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -539,7 +542,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         children: [
           Text(
-            '✓ KURULUM TAMAM',
+            s.onbDoneTitle,
             style: TextStyle(
               color: _theme.protocol,
               fontSize: 14,
@@ -549,7 +552,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Sentinel hazır. Bundan sonra internet gerektirmez.',
+            s.onbDoneBody,
             style: TextStyle(
               color: _theme.textPrimary,
               fontSize: 12,
@@ -563,6 +566,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _errorBody() {
+    final s = S.current;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -575,7 +579,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '✗ HATA',
+            s.onbErrorTitle,
             style: TextStyle(
               color: _theme.urgent,
               fontSize: 13,
@@ -585,7 +589,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _error ?? 'Bilinmeyen hata',
+            _error ?? '—',
             style: TextStyle(
               color: _theme.textPrimary,
               fontSize: 12,
@@ -594,7 +598,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'İndirme kaldığı yerden devam edebilir.',
+            s.onbErrorResumable,
             style: TextStyle(
               color: _theme.textSubtle,
               fontSize: 10,
@@ -606,20 +610,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _setupActions() {
+    final s = S.current;
     switch (_phase) {
       case _DownloadPhase.idle:
       case _DownloadPhase.checkingWifi:
         return _primaryButton(
-          _phase == _DownloadPhase.checkingWifi ? 'KONTROL...' : 'İNDİRMEYİ BAŞLAT',
+          _phase == _DownloadPhase.checkingWifi
+              ? s.onbChecking
+              : s.onbStartDownload,
           _phase == _DownloadPhase.checkingWifi ? () {} : _checkWifiAndDownload,
         );
       case _DownloadPhase.downloading:
       case _DownloadPhase.verifying:
         return const SizedBox.shrink();
       case _DownloadPhase.done:
-        return _primaryButton('GİRİŞ →', widget.onComplete);
+        return _primaryButton(s.onbEnterButton, widget.onComplete);
       case _DownloadPhase.error:
-        return _primaryButton('TEKRAR DENE', _runDownload);
+        return _primaryButton(s.onbRetryButton, _runDownload);
     }
   }
 

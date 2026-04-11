@@ -4,6 +4,7 @@ import '../services/ai_service.dart';
 import '../services/skill_router.dart';
 import '../services/usage_service.dart';
 import '../utils/prompt_builder.dart';
+import '../utils/strings.dart';
 import '../utils/theme.dart';
 import '../widgets/crt_overlay.dart';
 import '../widgets/lighthouse_icon.dart';
@@ -25,7 +26,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final AIService _aiService = AIService();
-  final SkillRouter _skillRouter = SkillRouter(language: 'tr');
+  late final SkillRouter _skillRouter = SkillRouter(language: S.language.value);
   final UsageService _usage = UsageService();
 
   HavenTheme _theme = HavenTheme.normal;
@@ -62,13 +63,12 @@ class _ChatScreenState extends State<ChatScreen> {
         _isLoading = false;
       });
       _addMessage(ChatMessage(
-        text: 'Haven Protocol aktif. Acil bir durum mu var?\n'
-            'Durumunuzu anlatın, adım adım yönlendireceğim.',
+        text: S.current.welcomeMessage,
         isUser: false,
       ));
     } catch (e) {
       setState(() => _isLoading = false);
-      _showError('AI modeli yüklenemedi: $e');
+      _showError(S.format(S.current.aiLoadError, {'error': e.toString()}));
     }
   }
 
@@ -95,9 +95,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (!await _usage.canAskQuestion()) {
       _addMessage(ChatMessage(
-        text: 'Günlük ${UsageService.dailyLimit} soru limitiniz doldu.\n'
-            'Yarın sıfırlanır. Acil bir durumdaysanız SOS modunu kullanın '
-            'veya Premium\'a yükseltin.',
+        text: S.format(S.current.dailyLimitReached,
+            {'limit': UsageService.dailyLimit.toString()}),
         isUser: false,
         typingDone: true,
       ));
@@ -113,7 +112,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final formattedPrompt = PromptBuilder.build(
         userMessage: text,
         skill: skill,
-        language: 'tr',
+        language: S.language.value,
       );
       final response = await _aiService.generateResponse(formattedPrompt);
       await _usage.recordQuestion();
@@ -122,7 +121,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _addMessage(ChatMessage(text: response, isUser: false));
     } catch (e) {
       setState(() => _isLoading = false);
-      _showError('Hata: $e');
+      _showError(S.format(S.current.genericError, {'error': e.toString()}));
     }
   }
 
@@ -143,8 +142,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (!await _usage.canActivateSOS()) {
       final remaining = await _usage.sosCooldownRemaining();
-      _showError(
-          'SOS modu 30 günde bir kez kullanılabilir. Kalan süre: ${_formatDuration(remaining)}');
+      _showError(S.format(S.current.sosCooldownMessage,
+          {'remaining': _formatDuration(remaining)}));
       return;
     }
 
@@ -260,7 +259,7 @@ class _ChatScreenState extends State<ChatScreen> {
           CircularProgressIndicator(color: _theme.primary),
           const SizedBox(height: 20),
           Text(
-            'AI modeli yükleniyor...\nBu bir dakika sürebilir.',
+            S.current.loadingModel,
             textAlign: TextAlign.center,
             style: TextStyle(color: _theme.textMuted, fontSize: 14),
           ),
@@ -298,7 +297,7 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Row(
         children: [
           Text(
-            'Düşünüyor...',
+            S.current.thinking,
             style: TextStyle(
               color: _theme.textMuted,
               fontStyle: FontStyle.italic,
@@ -377,8 +376,8 @@ class _ChatScreenState extends State<ChatScreen> {
               letterSpacing: 1.2,
             ),
             child: Text(_isBunker
-                ? 'SURVIVAL AI // SOS ACTIVE'
-                : 'SURVIVAL AI // OFFLINE'),
+                ? S.current.appTaglineSosActive
+                : S.current.appTagline),
           ),
           const SizedBox(height: 6),
           _buildInfoBar(),
@@ -400,7 +399,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (_sosActive) ...[
             Expanded(
               child: Text(
-                '[!] SOS — SINIRSIZ ERİŞİM',
+                S.current.sosActiveLabel,
                 style: TextStyle(
                   color: _theme.primary,
                   fontSize: 10,
@@ -422,8 +421,11 @@ class _ChatScreenState extends State<ChatScreen> {
             Expanded(
               child: Text(
                 _premium
-                    ? 'PREMIUM — SINIRSIZ'
-                    : 'SORU: $_questionsUsed/${UsageService.dailyLimit}',
+                    ? S.current.quotaPremium
+                    : S.format(S.current.quotaLabel, {
+                        'used': _questionsUsed.toString(),
+                        'total': UsageService.dailyLimit.toString(),
+                      }),
                 style: TextStyle(
                   color: _theme.textMuted,
                   fontSize: 10,
@@ -442,9 +444,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   borderRadius: BorderRadius.circular(2),
                 ),
-                child: const Text(
-                  '[*] PREMIUM',
-                  style: TextStyle(
+                child: Text(
+                  S.current.premiumBadge,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
@@ -481,7 +483,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         child: Text(
-          '[!] SOS',
+          S.current.sosButton,
           style: TextStyle(
             color: _theme.sosText,
             fontSize: 13,
@@ -510,7 +512,7 @@ class _ChatScreenState extends State<ChatScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'KULLANICI@haven:~\$',
+              S.current.userLabel,
               style: TextStyle(
                 fontSize: 9,
                 color: _theme.userLabel,
@@ -565,7 +567,7 @@ class _ChatScreenState extends State<ChatScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'HAVEN://response',
+              S.current.aiLabel,
               style: TextStyle(
                 fontSize: 9,
                 color: _theme.aiLabel,
@@ -621,7 +623,7 @@ class _ChatScreenState extends State<ChatScreen> {
         border: Border(top: BorderSide(color: _theme.disclaimerBorder)),
       ),
       child: Text(
-        '[+] BU BİLGİ PROFESYONEL YARDIMIN YERİNİ ALMAZ',
+        S.current.disclaimerBar,
         textAlign: TextAlign.center,
         style: TextStyle(
           color: _theme.disclaimerText,
@@ -662,7 +664,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 enabled: !_isLoading,
                 style: TextStyle(fontSize: 13, color: _theme.inputText),
                 decoration: InputDecoration(
-                  hintText: 'Ne oldu? Durumunuzu anlatın...',
+                  hintText: S.current.inputHint,
                   hintStyle: TextStyle(
                     color: _theme.inputText.withValues(alpha: 0.4),
                     fontSize: 13,

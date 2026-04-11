@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/strings.dart';
 
 Future<bool?> showSOSConfirmDialog(BuildContext context) {
   return showDialog<bool>(
@@ -13,6 +14,7 @@ class _SOSConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.current;
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
@@ -44,10 +46,10 @@ class _SOSConfirmDialog extends StatelessWidget {
                 borderRadius:
                     BorderRadius.vertical(top: Radius.circular(6)),
               ),
-              child: const Text(
-                '[!] SOS MODU',
+              child: Text(
+                s.sosDialogTitle,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -59,23 +61,23 @@ class _SOSConfirmDialog extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
               child: Column(
                 children: [
-                  const Text.rich(
+                  Text.rich(
                     TextSpan(
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Color(0xFF2A3428),
                         fontSize: 13,
                         height: 1.6,
                       ),
                       children: [
-                        TextSpan(text: 'Bu özellik '),
+                        TextSpan(text: s.sosDialogIntroPrefix),
                         TextSpan(
-                          text: 'gerçek acil durumlar',
-                          style: TextStyle(
+                          text: s.sosDialogIntroBold,
+                          style: const TextStyle(
                             color: Color(0xFF9B1B1B),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        TextSpan(text: ' içindir.'),
+                        TextSpan(text: s.sosDialogIntroSuffix),
                       ],
                     ),
                     textAlign: TextAlign.center,
@@ -88,25 +90,25 @@ class _SOSConfirmDialog extends StatelessWidget {
                       border: Border.all(color: const Color(0xFFA0AA96)),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Column(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _Bullet(
                           mark: '✓',
-                          markColor: Color(0xFF3D6B35),
-                          text: '72 saat sınırsız soru',
+                          markColor: const Color(0xFF3D6B35),
+                          text: s.sosBullet72h,
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         _Bullet(
                           mark: '✓',
-                          markColor: Color(0xFF3D6B35),
-                          text: 'Karanlık mod (pil tasarrufu)',
+                          markColor: const Color(0xFF3D6B35),
+                          text: s.sosBulletDarkMode,
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         _Bullet(
                           mark: '!',
-                          markColor: Color(0xFFD67B37),
-                          text: '30 günde 1 kez kullanılabilir',
+                          markColor: const Color(0xFFD67B37),
+                          text: s.sosBulletCooldown,
                         ),
                       ],
                     ),
@@ -116,7 +118,7 @@ class _SOSConfirmDialog extends StatelessWidget {
                     children: [
                       Expanded(
                         child: _Button(
-                          label: 'İPTAL',
+                          label: s.cancel,
                           filled: false,
                           onTap: () => Navigator.of(context).pop(false),
                         ),
@@ -124,7 +126,7 @@ class _SOSConfirmDialog extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: _Button(
-                          label: '[!] AKTİFLEŞTİR',
+                          label: s.sosActivate,
                           filled: true,
                           onTap: () => Navigator.of(context).pop(true),
                         ),

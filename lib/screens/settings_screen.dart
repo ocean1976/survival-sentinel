@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/usage_service.dart';
+import '../utils/strings.dart';
 import '../utils/theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -19,9 +20,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const String appVersion = '1.0.0';
-  static const String modelName = 'Gemma 4 (2.3 GB)';
-
   bool _loading = true;
   bool _premium = false;
   int _questionsUsed = 0;
@@ -46,6 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final t = widget.theme;
+    final s = S.current;
     return Scaffold(
       backgroundColor: t.background,
       appBar: AppBar(
@@ -56,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'AYARLAR',
+          s.settingsTitle,
           style: TextStyle(
             color: t.primary,
             fontSize: 16,
@@ -70,41 +69,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 12),
               children: [
-                _section('GENEL'),
-                _row(label: 'Dil / Language', value: 'Türkçe', onTap: () {}),
-                _section('GÖRÜNÜM'),
+                _section(s.sectionGeneral),
+                _row(
+                  label: s.langRow,
+                  value: s.langValue,
+                  onTap: _chooseLanguage,
+                ),
+                _section(s.sectionAppearance),
                 _toggleRow(
-                  label: 'Karanlık Mod',
+                  label: s.darkMode,
                   value: t.mode == HavenMode.bunker,
                   enabled: _premium,
-                  disabledHint: 'Sadece Premium',
+                  disabledHint: s.premiumOnly,
                   onChanged: (_) {},
                 ),
-                _row(label: 'Font Boyutu', value: 'Normal', onTap: () {}),
-                _section('HESAP'),
+                _row(label: s.fontSize, value: s.fontSizeNormal, onTap: () {}),
+                _section(s.sectionAccount),
                 _row(
-                  label: 'Durum',
+                  label: s.statusRow,
                   value: _premium
-                      ? 'Premium'
-                      : 'Ücretsiz — $_questionsUsed/${UsageService.dailyLimit} soru',
+                      ? s.statusPremium
+                      : S.format(s.statusFreeFormat, {
+                          'used': _questionsUsed.toString(),
+                          'total': UsageService.dailyLimit.toString(),
+                        }),
                 ),
                 if (!_premium)
                   _row(
-                    label: '[*] Premium\'a Yükselt',
-                    value: '\$5\'dan',
+                    label: s.upgradeRow,
+                    value: s.upgradeValue,
                     onTap: _showSoon,
                     accent: true,
                   ),
-                _row(label: 'Satın almayı geri yükle', onTap: _showSoon),
-                _section('BİLGİ'),
-                _row(label: 'Kaynaklar', value: 'FEMA, FM 21-76, CDC', onTap: _showSources),
-                _row(label: 'Gizlilik Politikası', onTap: _showSoon),
-                _row(label: 'Kullanım Şartları', onTap: _showSoon),
-                _row(label: 'Versiyon', value: 'v$appVersion'),
-                _section('VERİ'),
-                _row(label: 'AI Model', value: modelName),
+                _row(label: s.restorePurchase, onTap: _showSoon),
+                _section(s.sectionInfo),
                 _row(
-                  label: 'Sohbet geçmişini temizle',
+                  label: s.sourcesRow,
+                  value: s.sourcesValue,
+                  onTap: _showSources,
+                ),
+                _row(label: s.privacyRow, onTap: _showSoon),
+                _row(label: s.termsRow, onTap: _showSoon),
+                _row(label: s.versionRow, value: s.versionValue),
+                _section(s.sectionData),
+                _row(label: s.aiModelRow, value: s.aiModelValue),
+                _row(
+                  label: s.clearChatRow,
                   onTap: _confirmClearChat,
                   danger: true,
                 ),
@@ -159,19 +169,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: Text(
                   label,
-                  style: TextStyle(
-                    color: labelColor,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: labelColor, fontSize: 13),
                 ),
               ),
               if (value != null)
                 Text(
                   value,
-                  style: TextStyle(
-                    color: t.textMuted,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: t.textMuted, fontSize: 12),
                 ),
               if (onTap != null) ...[
                 const SizedBox(width: 6),
@@ -232,8 +236,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showSoon() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Yakında')),
+      SnackBar(content: Text(S.current.comingSoon)),
     );
+  }
+
+  Future<void> _chooseLanguage() async {
+    final t = widget.theme;
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        backgroundColor: t.surface,
+        title: Text(
+          S.current.languageDialogTitle,
+          style: TextStyle(color: t.textPrimary, fontSize: 15),
+        ),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop('tr'),
+            child: Text(S.current.langOptionTr,
+                style: TextStyle(color: t.textPrimary)),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop('en'),
+            child: Text(S.current.langOptionEn,
+                style: TextStyle(color: t.textPrimary)),
+          ),
+        ],
+      ),
+    );
+    if (picked == null) return;
+    await widget.usage.setLanguage(picked);
+    S.language.value = picked;
   }
 
   void _showSources() {
@@ -242,22 +275,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: t.surface,
-        title: Text('Kaynaklar',
+        title: Text(S.current.sourcesDialogTitle,
             style: TextStyle(color: t.textPrimary, fontSize: 15)),
         content: Text(
-          '• FM 21-76 — US Army Survival Manual\n'
-          '• FM 3-05.70 — Updated Survival Manual\n'
-          '• NWSS — Nuclear War Survival Skills\n'
-          '• FEMA P-2064 "Are You Ready?"\n'
-          '• Ready.gov\n'
-          '• CDC\n'
-          '• WHO',
+          S.current.sourcesDialogBody,
           style: TextStyle(color: t.textMuted, fontSize: 12, height: 1.6),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('KAPAT', style: TextStyle(color: t.primary)),
+            child: Text(S.current.closeButton,
+                style: TextStyle(color: t.primary)),
           ),
         ],
       ),
@@ -270,16 +298,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: t.surface,
-        title: Text('Sohbeti Temizle',
+        title: Text(S.current.clearChatDialogTitle,
             style: TextStyle(color: t.textPrimary, fontSize: 15)),
         content: Text(
-          'Tüm sohbet geçmişi silinecek. Emin misiniz?',
+          S.current.clearChatDialogBody,
           style: TextStyle(color: t.textMuted, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('İPTAL', style: TextStyle(color: t.textMuted)),
+            child: Text(S.current.cancel,
+                style: TextStyle(color: t.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -287,7 +316,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop();
             },
-            child: Text('SİL', style: TextStyle(color: t.urgent)),
+            child: Text(S.current.deleteButton,
+                style: TextStyle(color: t.urgent)),
           ),
         ],
       ),
