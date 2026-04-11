@@ -32,6 +32,8 @@ class _ChatScreenState extends State<ChatScreen> {
   HavenTheme _theme = HavenTheme.normal;
   bool _isLoading = false;
   bool _isModelLoaded = false;
+  bool _mockMode = false;
+  bool _crashLoopDetected = false;
   String? _initError;
   final List<ChatMessage> _messages = [];
 
@@ -53,15 +55,39 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       _isLoading = true;
       _initError = null;
+      _crashLoopDetected = false;
     });
+
+    // Ortak ön-adımlar (AI'dan bağımsız)
+    await _skillRouter.load();
+    await _syncUsage();
+    if (await _usage.isSOSActive()) {
+      if (mounted) setState(() => _theme = HavenTheme.bunker);
+      _startSOSTicker();
+    }
+
+    // Kullanıcı daha önce mock modunu seçtiyse direkt ona geç
+    if (await _usage.isMockMode()) {
+      _enterMockMode();
+      return;
+    }
+
+    // Crash-loop kontrolü — önceki launch init'te donduysa auto-fallback
+    if (await _usage.didLastInitCrash()) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _crashLoopDetected = true;
+        _initError = S.current.initErrorCrashDetected;
+      });
+      return;
+    }
+
+    // Gerçek init
+    await _usage.markInitStarted();
     try {
-      await _skillRouter.load();
       await _aiService.initialize();
-      await _syncUsage();
-      if (await _usage.isSOSActive()) {
-        setState(() => _theme = HavenTheme.bunker);
-        _startSOSTicker();
-      }
+      await _usage.markInitFinished();
       if (!mounted) return;
       setState(() {
         _isModelLoaded = true;
@@ -72,6 +98,7 @@ class _ChatScreenState extends State<ChatScreen> {
         isUser: false,
       ));
     } catch (e) {
+      await _usage.markInitFinished();
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -81,7 +108,25 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _retryInitialization() async {
+    await _usage.markInitFinished();
+    await _usage.setMockMode(false);
     await _initializeAI();
+  }
+
+  Future<void> _enterMockMode() async {
+    await _usage.setMockMode(true);
+    await _usage.markInitFinished();
+    if (!mounted) return;
+    setState(() {
+      _mockMode = true;
+      _isModelLoaded = true; // UI akışı "hazır" olarak devam etsin
+      _isLoading = false;
+      _initError = null;
+    });
+    _addMessage(ChatMessage(
+      text: S.current.welcomeMessage,
+      isUser: false,
+    ));
   }
 
   void _addMessage(ChatMessage message) {
@@ -119,6 +164,19 @@ class _ChatScreenState extends State<ChatScreen> {
     _addMessage(ChatMessage(text: text, isUser: true, typingDone: true));
     setState(() => _isLoading = true);
 
+    if (_mockMode) {
+      final skill = _skillRouter.match(text);
+      final mockResponse = skill != null
+          ? skill.body
+          : S.current.mockResponseNoSkill;
+      await _usage.recordQuestion();
+      await _syncUsage();
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _addMessage(ChatMessage(text: mockResponse, isUser: false));
+      return;
+    }
+
     try {
       final skill = _skillRouter.match(text);
       final formattedPrompt = PromptBuilder.build(
@@ -129,9 +187,11 @@ class _ChatScreenState extends State<ChatScreen> {
       final response = await _aiService.generateResponse(formattedPrompt);
       await _usage.recordQuestion();
       await _syncUsage();
+      if (!mounted) return;
       setState(() => _isLoading = false);
       _addMessage(ChatMessage(text: response, isUser: false));
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       _showError(S.format(S.current.genericError, {'error': e.toString()}));
     }
@@ -243,6 +303,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     children: [
                       _buildHeader(),
                       _buildDivider(),
+                      if (_mockMode) _buildMockBanner(),
                       Expanded(
                         child: _isModelLoaded
                             ? _buildChatArea()
@@ -284,6 +345,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildErrorScreen() {
+    final s = S.current;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -292,7 +354,7 @@ class _ChatScreenState extends State<ChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              '✗ AI BAŞLATILAMADI',
+              s.initErrorTitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: _theme.urgent,
@@ -302,46 +364,85 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: _theme.surface,
-                border: Border.all(color: _theme.urgent),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: SingleChildScrollView(
-                child: Text(
-                  _initError ?? '—',
-                  style: TextStyle(
-                    color: _theme.textPrimary,
-                    fontSize: 11,
-                    height: 1.5,
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _theme.surface,
+                  border: Border.all(color: _theme.urgent),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    _initError ?? '—',
+                    style: TextStyle(
+                      color: _theme.textPrimary,
+                      fontSize: 11,
+                      height: 1.5,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 20),
-            GestureDetector(
-              onTap: _retryInitialization,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: _theme.primary,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'TEKRAR DENE',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
+            if (!_crashLoopDetected)
+              _errorButton(
+                label: s.retryButton,
+                filled: true,
+                onTap: _retryInitialization,
               ),
+            if (!_crashLoopDetected) const SizedBox(height: 10),
+            _errorButton(
+              label: s.demoModeButton,
+              filled: _crashLoopDetected,
+              onTap: _enterMockMode,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _errorButton({
+    required String label,
+    required bool filled,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: filled ? _theme.primary : _theme.surface,
+          border: Border.all(color: _theme.primary),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: filled ? Colors.white : _theme.primary,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMockBanner() {
+    return Container(
+      width: double.infinity,
+      color: _theme.critical.withValues(alpha: 0.2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: Text(
+        S.current.mockBanner,
+        style: TextStyle(
+          color: _theme.critical,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
         ),
       ),
     );

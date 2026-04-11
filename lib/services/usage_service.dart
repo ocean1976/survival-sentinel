@@ -18,6 +18,8 @@ class UsageService {
   static const _kPremium = 'usage.premium';
   static const _kOnboardingComplete = 'usage.onboarding_complete';
   static const _kLanguage = 'usage.language';
+  static const _kInitInProgress = 'usage.init_in_progress';
+  static const _kMockMode = 'usage.mock_mode';
 
   SharedPreferences? _prefs;
 
@@ -40,6 +42,25 @@ class UsageService {
 
   Future<void> setLanguage(String lang) async =>
       (await _p()).setString(_kLanguage, lang);
+
+  /// AI init'in "yarıda kaldığını" işaretle. Init'ten ÖNCE çağır.
+  /// Başarılı init sonrası `markInitFinished()` ile temizle.
+  /// Hâlâ set ise bir önceki launch crash etmiş demektir.
+  Future<void> markInitStarted() async =>
+      (await _p()).setBool(_kInitInProgress, true);
+
+  Future<void> markInitFinished() async =>
+      (await _p()).setBool(_kInitInProgress, false);
+
+  Future<bool> didLastInitCrash() async =>
+      (await _p()).getBool(_kInitInProgress) ?? false;
+
+  /// Mock mode — native AI çökmüş veya kullanıcı demo seçmiş durumda.
+  Future<bool> isMockMode() async =>
+      (await _p()).getBool(_kMockMode) ?? false;
+
+  Future<void> setMockMode(bool value) async =>
+      (await _p()).setBool(_kMockMode, value);
 
   // -------- Question counter --------
 

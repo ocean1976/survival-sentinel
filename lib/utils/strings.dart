@@ -29,6 +29,12 @@ class AppStrings {
   final String sosCooldownMessage;  // parametreli
   final String aiLoadError;
   final String genericError;
+  final String initErrorTitle;
+  final String initErrorCrashDetected;
+  final String retryButton;
+  final String demoModeButton;
+  final String mockBanner;
+  final String mockResponseNoSkill;
 
   // --- SOS Dialog ---
   final String sosDialogTitle;
@@ -161,6 +167,12 @@ class AppStrings {
     required this.sosCooldownMessage,
     required this.aiLoadError,
     required this.genericError,
+    required this.initErrorTitle,
+    required this.initErrorCrashDetected,
+    required this.retryButton,
+    required this.demoModeButton,
+    required this.mockBanner,
+    required this.mockResponseNoSkill,
     required this.sosDialogTitle,
     required this.sosDialogIntroPrefix,
     required this.sosDialogIntroBold,
@@ -282,6 +294,15 @@ class AppStrings {
         'SOS modu 30 günde bir kez kullanılabilir. Kalan süre: {remaining}',
     aiLoadError: 'AI modeli yüklenemedi: {error}',
     genericError: 'Hata: {error}',
+    initErrorTitle: '✗ AI BAŞLATILAMADI',
+    initErrorCrashDetected:
+        'Önceki açılışta model yükleme çöktü. Cihazınız AI modelini çalıştıramıyor olabilir. Tekrar denemek yerine demo modunda devam etmenizi öneririz.',
+    retryButton: 'TEKRAR DENE',
+    demoModeButton: 'DEMO MODUNDA DEVAM ET',
+    mockBanner:
+        '⚠ DEMO MODU — Model yüklenemedi, yanıtlar önceden hazırlanmış protokollerden gelir.',
+    mockResponseNoSkill:
+        'Demo modundasın — bu konuda hazır bir protokol yok.\nŞunları deneyebilirsin: deprem, yangın, ilk yardım, su, barınak, sel, tornado, orman yangını, tsunami, nükleer, kimyasal, pandemi.\n\n⚕️ Bu bilgi profesyonel yardımın yerini almaz.',
     sosDialogTitle: '[!] SOS MODU',
     sosDialogIntroPrefix: 'Bu özellik ',
     sosDialogIntroBold: 'gerçek acil durumlar',
@@ -417,6 +438,15 @@ class AppStrings {
         'SOS mode can be used once every 30 days. Time remaining: {remaining}',
     aiLoadError: 'Failed to load AI model: {error}',
     genericError: 'Error: {error}',
+    initErrorTitle: '✗ AI FAILED TO START',
+    initErrorCrashDetected:
+        'The previous launch crashed while loading the model. Your device may not be able to run this AI. We recommend continuing in demo mode instead.',
+    retryButton: 'RETRY',
+    demoModeButton: 'CONTINUE IN DEMO MODE',
+    mockBanner:
+        '⚠ DEMO MODE — Model unavailable, answers come from pre-built protocols.',
+    mockResponseNoSkill:
+        'You\'re in demo mode — no pre-built protocol for this topic.\nTry: earthquake, fire, first aid, water, shelter, flood, tornado, wildfire, tsunami, nuclear, chemical, pandemic.\n\n⚕️ This information does not replace professional help.',
     sosDialogTitle: '[!] SOS MODE',
     sosDialogIntroPrefix: 'This feature is for ',
     sosDialogIntroBold: 'real emergencies',
