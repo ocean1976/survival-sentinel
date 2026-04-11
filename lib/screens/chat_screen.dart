@@ -32,6 +32,7 @@ class _ChatScreenState extends State<ChatScreen> {
   HavenTheme _theme = HavenTheme.normal;
   bool _isLoading = false;
   bool _isModelLoaded = false;
+  String? _initError;
   final List<ChatMessage> _messages = [];
 
   bool _premium = false;
@@ -49,7 +50,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _initializeAI() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _initError = null;
+    });
     try {
       await _skillRouter.load();
       await _aiService.initialize();
@@ -58,6 +62,7 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() => _theme = HavenTheme.bunker);
         _startSOSTicker();
       }
+      if (!mounted) return;
       setState(() {
         _isModelLoaded = true;
         _isLoading = false;
@@ -67,9 +72,16 @@ class _ChatScreenState extends State<ChatScreen> {
         isUser: false,
       ));
     } catch (e) {
-      setState(() => _isLoading = false);
-      _showError(S.format(S.current.aiLoadError, {'error': e.toString()}));
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _initError = e.toString();
+      });
     }
+  }
+
+  Future<void> _retryInitialization() async {
+    await _initializeAI();
   }
 
   void _addMessage(ChatMessage message) {
@@ -254,6 +266,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildLoadingScreen() {
+    if (_initError != null) return _buildErrorScreen();
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -266,6 +279,70 @@ class _ChatScreenState extends State<ChatScreen> {
             style: TextStyle(color: _theme.textMuted, fontSize: 14),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorScreen() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '✗ AI BAŞLATILAMADI',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _theme.urgent,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _theme.surface,
+                border: Border.all(color: _theme.urgent),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: SingleChildScrollView(
+                child: Text(
+                  _initError ?? '—',
+                  style: TextStyle(
+                    color: _theme.textPrimary,
+                    fontSize: 11,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: _retryInitialization,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: _theme.primary,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'TEKRAR DENE',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

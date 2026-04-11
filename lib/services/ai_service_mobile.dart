@@ -21,15 +21,42 @@ class AIServicePlatform {
           'AI modeli bulunamadı. Lütfen onboarding\'i tamamlayın.');
     }
 
+    final fileSize = await File(modelPath).length();
+    if (fileSize < 100 * 1024 * 1024) {
+      throw Exception(
+          'Model dosyası eksik veya bozuk (${fileSize ~/ (1024 * 1024)} MB). Yeniden indirilmeli.');
+    }
+
     onProgress?.call(2, 2, 'Model başlatılıyor');
+
+    // Android için güvenli parametreler:
+    // - nGpuLayers = 0: GPU offload yok, saf CPU (S22 Ultra'da GPU desteği yok)
+    // - useMemorymap: true — modeli RAM'e kopyalamadan mmap ile yükle
+    // - nCtx = 1024: 2k yerine 1k, RAM basıncını yarıya indirir
+    // - nThreads = 2: 4 yerine 2, thread yönetimi maliyetini azaltır
+    final modelParams = ModelParams()
+      ..nGpuLayers = 0
+      ..useMemorymap = true
+      ..vocabOnly = false;
+
     final contextParams = ContextParams()
-      ..nCtx = 2048
-      ..nBatch = 512
-      ..nThreads = 4
-      ..nThreadsBatch = 4
+      ..nCtx = 1024
+      ..nBatch = 256
+      ..nUbatch = 256
+      ..nThreads = 2
+      ..nThreadsBatch = 2
       ..nPredict = maxTokens;
 
-    _llama = Llama(modelPath, null, contextParams);
+    try {
+      _llama = Llama(modelPath, modelParams, contextParams);
+    } catch (e, stack) {
+      _llama = null;
+      throw Exception('Model yüklenemedi: $e\n\nÇözüm önerileri:\n'
+          '• Uygulamayı yeniden başlatın\n'
+          '• Yeterli boş RAM olduğundan emin olun\n'
+          '• Model dosyasını yeniden indirin\n\n'
+          'Teknik detay: $stack');
+    }
   }
 
   Future<String> generateResponse(String formattedPrompt) async {
@@ -38,33 +65,35 @@ class AIServicePlatform {
       throw Exception('Model not loaded');
     }
 
-    llama.setPrompt(formattedPrompt);
-    final buf = StringBuffer();
-    int produced = 0;
-    await for (final token in llama.generateText()) {
-      buf.write(token);
-      produced++;
-      final soFar = buf.toString();
-      if (stopSequences.any(soFar.contains)) {
-        break;
+    try {
+      llama.setPrompt(formattedPrompt);
+      final buf = StringBuffer();
+      int produced = 0;
+      await for (final token in llama.generateText()) {
+        buf.write(token);
+        produced++;
+        final soFar = buf.toString();
+        if (stopSequences.any(soFar.contains)) break;
+        if (produced >= maxTokens) break;
       }
-      if (produced >= maxTokens) {
-        break;
-      }
-    }
 
-    var out = buf.toString();
-    for (final stop in stopSequences) {
-      final idx = out.indexOf(stop);
-      if (idx >= 0) {
-        out = out.substring(0, idx);
+      var out = buf.toString();
+      for (final stop in stopSequences) {
+        final idx = out.indexOf(stop);
+        if (idx >= 0) out = out.substring(0, idx);
       }
+      return out.trim();
+    } catch (e) {
+      return 'Yanıt oluşturulurken hata: $e';
     }
-    return out.trim();
   }
 
   void dispose() {
-    _llama?.dispose();
+    try {
+      _llama?.dispose();
+    } catch (_) {
+      // Zararsız — model zaten freed olabilir
+    }
     _llama = null;
   }
 }
