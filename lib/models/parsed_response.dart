@@ -136,7 +136,7 @@ class ParsedResponse {
     final trimmed = line.trimLeft();
     if (trimmed.isEmpty) return null;
 
-    // Marker prefix: ▲ » ◆
+    // Legacy marker prefix: ▲ » ◆ (skill files + earlier prompt)
     if (trimmed.startsWith('▲')) {
       return _Classification(
           BlockKind.urgent, _stripHeadingPrefix(trimmed.substring(1)));
@@ -148,6 +148,21 @@ class ParsedResponse {
     if (trimmed.startsWith('◆')) {
       return _Classification(
           BlockKind.critical, _stripHeadingPrefix(trimmed.substring(1)));
+    }
+
+    // New Haven Protocol v2 prompt markers: ⚠️ 📋 ⚡
+    // Emojis may be followed by a variation selector (U+FE0F) or whitespace.
+    if (_startsWithEmoji(trimmed, '⚠')) {
+      return _Classification(
+          BlockKind.urgent, _stripEmojiHeading(trimmed));
+    }
+    if (_startsWithEmoji(trimmed, '📋')) {
+      return _Classification(
+          BlockKind.protocol, _stripEmojiHeading(trimmed));
+    }
+    if (_startsWithEmoji(trimmed, '⚡')) {
+      return _Classification(
+          BlockKind.critical, _stripEmojiHeading(trimmed));
     }
 
     // Markdown heading: ## ACİL EYLEM / ## PROTOKOL / ## KRİTİK UYARILAR
@@ -166,6 +181,29 @@ class ParsedResponse {
     }
 
     return null;
+  }
+
+  static bool _startsWithEmoji(String line, String emoji) {
+    if (line.startsWith(emoji)) return true;
+    // With variation selector
+    if (line.startsWith('$emoji\uFE0F')) return true;
+    return false;
+  }
+
+  static String? _stripEmojiHeading(String line) {
+    // Drop leading emoji + variation selector + optional "ACİL EYLEM:" label
+    // so any trailing content on the same line becomes the block body.
+    var s = line.replaceFirst(
+        RegExp(r'^[⚠📋⚡]\uFE0F?\s*'), '');
+    // Strip optional uppercase label + colon
+    final labelMatch =
+        RegExp(r'^[A-ZÇĞİÖŞÜ][A-ZÇĞİÖŞÜ\s]*:?\s*', unicode: true)
+            .firstMatch(s);
+    if (labelMatch != null) {
+      s = s.substring(labelMatch.end);
+    }
+    final trimmed = s.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   static String? _stripHeadingPrefix(String s) {
