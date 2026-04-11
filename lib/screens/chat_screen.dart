@@ -142,11 +142,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (!await _usage.canActivateSOS()) {
       final remaining = await _usage.sosCooldownRemaining();
+      if (!mounted) return;
       _showError(S.format(S.current.sosCooldownMessage,
           {'remaining': _formatDuration(remaining)}));
       return;
     }
 
+    if (!mounted) return;
     final confirmed = await showSOSConfirmDialog(context);
     if (confirmed == true) {
       await _usage.activateSOS();

@@ -75,9 +75,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _phase = _DownloadPhase.checkingWifi;
       _error = null;
     });
-    final results = await _connectivity.checkConnectivity();
-    final onWifi = results.contains(ConnectivityResult.wifi) ||
-        results.contains(ConnectivityResult.ethernet);
+    final result = await _connectivity.checkConnectivity();
+    final onWifi = result == ConnectivityResult.wifi ||
+        result == ConnectivityResult.ethernet;
     setState(() {
       _onWifi = onWifi;
       _wifiChecked = true;
