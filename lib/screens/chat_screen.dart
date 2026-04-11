@@ -51,6 +51,11 @@ class _ChatScreenState extends State<ChatScreen> {
     _initializeAI();
   }
 
+  /// DEFAULT MOCK: Uygulama AI'yı otomatik init etmez.
+  /// Native llama.cpp Android'de crash ediyor; kullanıcının tek yolu
+  /// uygulamayı açamamak olmasın — default olarak mock mode'da başla,
+  /// settings'teki "Gerçek AI'yı dene (deneysel)" butonu ile kullanıcı
+  /// kendi isterse init'i tetikler.
   Future<void> _initializeAI() async {
     setState(() {
       _isLoading = true;
@@ -58,7 +63,6 @@ class _ChatScreenState extends State<ChatScreen> {
       _crashLoopDetected = false;
     });
 
-    // Ortak ön-adımlar (AI'dan bağımsız)
     await _skillRouter.load();
     await _syncUsage();
     if (await _usage.isSOSActive()) {
@@ -66,28 +70,26 @@ class _ChatScreenState extends State<ChatScreen> {
       _startSOSTicker();
     }
 
-    // Kullanıcı daha önce mock modunu seçtiyse direkt ona geç
-    if (await _usage.isMockMode()) {
-      _enterMockMode();
-      return;
-    }
+    // Default: her zaman mock mode ile aç.
+    _enterMockMode();
+  }
 
-    // Crash-loop kontrolü — önceki launch init'te donduysa auto-fallback
-    if (await _usage.didLastInitCrash()) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _crashLoopDetected = true;
-        _initError = S.current.initErrorCrashDetected;
-      });
-      return;
-    }
+  /// Kullanıcı settings'ten manuel olarak AI'yı denemek isterse çağrılır.
+  /// Başarılı olursa mock'tan çıkar; başarısız olursa mock'a dönüp hatayı gösterir.
+  Future<void> _tryRealAI() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _isModelLoaded = false;
+      _mockMode = false;
+      _initError = null;
+    });
 
-    // Gerçek init
     await _usage.markInitStarted();
     try {
       await _aiService.initialize();
       await _usage.markInitFinished();
+      await _usage.setMockMode(false);
       if (!mounted) return;
       setState(() {
         _isModelLoaded = true;
@@ -108,9 +110,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _retryInitialization() async {
-    await _usage.markInitFinished();
-    await _usage.setMockMode(false);
-    await _initializeAI();
+    await _tryRealAI();
   }
 
   Future<void> _enterMockMode() async {
@@ -119,14 +119,16 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted) return;
     setState(() {
       _mockMode = true;
-      _isModelLoaded = true; // UI akışı "hazır" olarak devam etsin
+      _isModelLoaded = true;
       _isLoading = false;
       _initError = null;
     });
-    _addMessage(ChatMessage(
-      text: S.current.welcomeMessage,
-      isUser: false,
-    ));
+    if (_messages.isEmpty) {
+      _addMessage(ChatMessage(
+        text: S.current.welcomeMessage,
+        isUser: false,
+      ));
+    }
   }
 
   void _addMessage(ChatMessage message) {
@@ -276,6 +278,8 @@ class _ChatScreenState extends State<ChatScreen> {
               theme: _theme,
               usage: _usage,
               onClearChat: _clearChat,
+              onTryRealAI: _tryRealAI,
+              mockMode: _mockMode,
             ),
           ),
         )

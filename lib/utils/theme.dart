@@ -87,15 +87,16 @@ class HavenTheme {
     required this.sosText,
   });
 
+  /// Light / Normal palette — aligned to docs/chat_screen_design.jsx
   static const HavenTheme normal = HavenTheme._(
     mode: HavenMode.normal,
-    background: Color(0xFFD6D9D0),
-    surface: Color(0xFFF5F1E6),
-    headerBg: Color(0xFFA4AE9E),
+    background: Color(0xFFC5CCC4),    // chatBg
+    surface: Color(0xFF9EA89A),       // btnBg / infoBg
+    headerBg: Color(0xFFA8B2A4),
     headerBorder: Color(0xFF868E82),
-    divider: Color(0xFF2E402F),
-    primary: Color(0xFF2E402F),
-    primaryDim: Color(0xFF5A6A56),
+    divider: Color(0xFFA8B0A4),
+    primary: Color(0xFF283826),       // headerTitle
+    primaryDim: Color(0xFF5A6A56),    // headerSub
     textPrimary: Color(0xFF2A3428),
     textMuted: Color(0xFF5A6A56),
     textSubtle: Color(0xFF8A9484),
@@ -106,7 +107,7 @@ class HavenTheme {
     userBorder: Color(0xFF6A8A5A),
     userLabel: Color(0xFF566054),
     messageText: Color(0xFF2A3428),
-    urgent: Color(0xFFD9534F),
+    urgent: Color(0xFF9B1B1B),        // acilColor inline
     protocol: Color(0xFF3D6B35),
     critical: Color(0xFFD67B37),
     cursor: Color(0xFF3D6B35),
@@ -115,7 +116,7 @@ class HavenTheme {
     inputBorder: Color(0xFF929A8E),
     inputPrompt: Color(0xFF3D6B35),
     inputText: Color(0xFF2A3428),
-    sendBg: Color(0xFF2E402F),
+    sendBg: Color(0xFFA4AE9E),
     disclaimerBg: Color(0xFFAAB2A4),
     disclaimerBorder: Color(0xFF929A8E),
     disclaimerText: Color(0xFF566054),
@@ -126,10 +127,11 @@ class HavenTheme {
     sosText: Color(0xFFFFFFFF),
   );
 
+  /// Dark / Bunker palette — NORAD 1962, aligned to docs/chat_screen_design.jsx
   static const HavenTheme bunker = HavenTheme._(
     mode: HavenMode.bunker,
     background: Color(0xFF080A06),
-    surface: Color(0xFF0C0E08),
+    surface: Color(0xFF0E120A),
     headerBg: Color(0xFF060804),
     headerBorder: Color(0xFF1C2218),
     divider: Color(0xFF1C2218),
@@ -140,7 +142,7 @@ class HavenTheme {
     textSubtle: Color(0xFF2A4022),
     aiBg: Color(0xFF0C0E08),
     aiBorder: Color(0xFF486A38),
-    aiLabel: Color(0xFF486A3A),
+    aiLabel: Color(0xFF486A38),
     userBg: Color(0xFF0A0C07),
     userBorder: Color(0xFF3A5A2E),
     userLabel: Color(0xFF3A5A2E),
@@ -154,14 +156,14 @@ class HavenTheme {
     inputBorder: Color(0xFF1C2218),
     inputPrompt: Color(0xFF7CAA6A),
     inputText: Color(0xFF6A9858),
-    sendBg: Color(0xFF0C0E08),
+    sendBg: Color(0xFF0E120A),
     disclaimerBg: Color(0xFF060804),
     disclaimerBorder: Color(0xFF1C2218),
     disclaimerText: Color(0xFF2A4022),
     offlineBadgeBg: Color(0xFF1C2218),
     offlineBadgeText: Color(0xFF5A8048),
     sosGradient: [Color(0xFF8A3A28), Color(0xFF6A2A1A)],
-    sosBorder: Color(0xFFAA7040),
-    sosText: Color(0xFFD4A878),
+    sosBorder: Color(0xFF5A2218),
+    sosText: Color(0xFFCC8070),
   );
 }

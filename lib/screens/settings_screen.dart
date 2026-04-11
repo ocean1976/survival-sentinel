@@ -7,12 +7,16 @@ class SettingsScreen extends StatefulWidget {
   final HavenTheme theme;
   final UsageService usage;
   final VoidCallback onClearChat;
+  final Future<void> Function() onTryRealAI;
+  final bool mockMode;
 
   const SettingsScreen({
     super.key,
     required this.theme,
     required this.usage,
     required this.onClearChat,
+    required this.onTryRealAI,
+    required this.mockMode,
   });
 
   @override
@@ -113,6 +117,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _row(label: s.versionRow, value: s.versionValue),
                 _section(s.sectionData),
                 _row(label: s.aiModelRow, value: s.aiModelValue),
+                _row(
+                  label: s.realAiRow,
+                  value: widget.mockMode ? s.realAiDisabled : s.realAiEnabled,
+                  onTap: _confirmTryRealAI,
+                  accent: widget.mockMode,
+                ),
                 _row(
                   label: s.clearChatRow,
                   onTap: _confirmClearChat,
@@ -290,6 +300,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmTryRealAI() async {
+    final t = widget.theme;
+    final s = S.current;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: t.surface,
+        title: Text(s.realAiDialogTitle,
+            style: TextStyle(color: t.textPrimary, fontSize: 15)),
+        content: Text(
+          s.realAiDialogBody,
+          style: TextStyle(color: t.textMuted, fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(s.cancel, style: TextStyle(color: t.textMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(s.realAiDialogConfirm,
+                style: TextStyle(color: t.critical)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    await widget.onTryRealAI();
   }
 
   void _confirmClearChat() {

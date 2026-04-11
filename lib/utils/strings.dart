@@ -35,6 +35,12 @@ class AppStrings {
   final String demoModeButton;
   final String mockBanner;
   final String mockResponseNoSkill;
+  final String realAiRow;
+  final String realAiEnabled;
+  final String realAiDisabled;
+  final String realAiDialogTitle;
+  final String realAiDialogBody;
+  final String realAiDialogConfirm;
 
   // --- SOS Dialog ---
   final String sosDialogTitle;
@@ -173,6 +179,12 @@ class AppStrings {
     required this.demoModeButton,
     required this.mockBanner,
     required this.mockResponseNoSkill,
+    required this.realAiRow,
+    required this.realAiEnabled,
+    required this.realAiDisabled,
+    required this.realAiDialogTitle,
+    required this.realAiDialogBody,
+    required this.realAiDialogConfirm,
     required this.sosDialogTitle,
     required this.sosDialogIntroPrefix,
     required this.sosDialogIntroBold,
@@ -303,6 +315,13 @@ class AppStrings {
         '⚠ DEMO MODU — Model yüklenemedi, yanıtlar önceden hazırlanmış protokollerden gelir.',
     mockResponseNoSkill:
         'Demo modundasın — bu konuda hazır bir protokol yok.\nŞunları deneyebilirsin: deprem, yangın, ilk yardım, su, barınak, sel, tornado, orman yangını, tsunami, nükleer, kimyasal, pandemi.\n\n⚕️ Bu bilgi profesyonel yardımın yerini almaz.',
+    realAiRow: 'Gerçek AI (deneysel)',
+    realAiEnabled: 'Aktif',
+    realAiDisabled: 'Kapalı',
+    realAiDialogTitle: 'Gerçek AI Denensin mi?',
+    realAiDialogBody:
+        'Haven Protocol bazı cihazlarda model yüklerken çöker. Deneysel olarak gerçek AI\'yı başlatmayı deneyebilirsin. Cihaz çökerse uygulama tekrar mock moduna döner.\n\nDevam etmek ister misin?',
+    realAiDialogConfirm: 'DENE',
     sosDialogTitle: '[!] SOS MODU',
     sosDialogIntroPrefix: 'Bu özellik ',
     sosDialogIntroBold: 'gerçek acil durumlar',
@@ -447,6 +466,13 @@ class AppStrings {
         '⚠ DEMO MODE — Model unavailable, answers come from pre-built protocols.',
     mockResponseNoSkill:
         'You\'re in demo mode — no pre-built protocol for this topic.\nTry: earthquake, fire, first aid, water, shelter, flood, tornado, wildfire, tsunami, nuclear, chemical, pandemic.\n\n⚕️ This information does not replace professional help.',
+    realAiRow: 'Real AI (experimental)',
+    realAiEnabled: 'Enabled',
+    realAiDisabled: 'Disabled',
+    realAiDialogTitle: 'Try Real AI?',
+    realAiDialogBody:
+        'Haven Protocol crashes while loading the model on some devices. You can experimentally try to start the real AI. If the device crashes, the app will return to demo mode.\n\nContinue?',
+    realAiDialogConfirm: 'TRY',
     sosDialogTitle: '[!] SOS MODE',
     sosDialogIntroPrefix: 'This feature is for ',
     sosDialogIntroBold: 'real emergencies',

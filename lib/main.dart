@@ -22,7 +22,7 @@ class HavenProtocolApp extends StatelessWidget {
         return MaterialApp(
           title: 'Haven Protocol',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(fontFamily: 'Courier'),
+          theme: ThemeData(fontFamily: 'SpaceMono'),
           home: const AppRoot(),
         );
       },
