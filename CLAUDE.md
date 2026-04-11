@@ -269,10 +269,10 @@ Aşağıdaki mockup dosyaları tasarım referansı olarak kullanılmalıdır:
 
 | Dosya | İçerik |
 |-------|--------|
-| `chat_screen_design.jsx` | Normal + Bunker mod sohbet ekranı (4 mesajlı gerçekçi senaryo) |
-| `settings_premium_mockup.jsx` | Settings + Premium + SOS onay ekranı |
-| `sos_toggle_demo.jsx` | İnteraktif SOS toggle (açık↔bunker geçişi) |
-| `coldwar_terminals.jsx` | Bunker Console renk referansı (NORAD 1962) |
+| `docs/chat_screen_design.jsx` | Normal + Bunker mod sohbet ekranı (4 mesajlı gerçekçi senaryo) |
+| `docs/settings_premium_mockup.jsx` | Settings + Premium + SOS onay ekranı |
+| `docs/sos_toggle_demo.jsx` | İnteraktif SOS toggle (açık↔bunker geçişi) |
+| `docs/coldwar_terminals.jsx` | Bunker Console renk referansı (NORAD 1962) |
 
 ---
 
