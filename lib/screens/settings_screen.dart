@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/usage_service.dart';
 import '../utils/strings.dart';
 import '../utils/theme.dart';
+import 'premium_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final HavenTheme theme;
@@ -102,7 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _row(
                     label: s.upgradeRow,
                     value: s.upgradeValue,
-                    onTap: _showSoon,
+                    onTap: _openPremium,
                     accent: true,
                   ),
                 _row(label: s.restorePurchase, onTap: _showSoon),
@@ -240,6 +241,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             activeThumbColor: t.primary,
           ),
         ],
+      ),
+    );
+  }
+
+  void _openPremium() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PremiumScreen(theme: widget.theme),
       ),
     );
   }

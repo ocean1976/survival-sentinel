@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../services/ai_service.dart';
 import '../services/skill_router.dart';
@@ -51,11 +52,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _initializeAI();
   }
 
-  /// DEFAULT MOCK: Uygulama AI'yı otomatik init etmez.
-  /// Native llama.cpp Android'de crash ediyor; kullanıcının tek yolu
-  /// uygulamayı açamamak olmasın — default olarak mock mode'da başla,
-  /// settings'teki "Gerçek AI'yı dene (deneysel)" butonu ile kullanıcı
-  /// kendi isterse init'i tetikler.
+  /// AI başlatma: Web'de mock, mobilde önce gerçek AI dene, başarısızsa mock'a düş.
   Future<void> _initializeAI() async {
     setState(() {
       _isLoading = true;
@@ -70,8 +67,21 @@ class _ChatScreenState extends State<ChatScreen> {
       _startSOSTicker();
     }
 
-    // Default: her zaman mock mode ile aç.
-    _enterMockMode();
+    // Web platformda her zaman mock
+    if (kIsWeb) {
+      _enterMockMode();
+      return;
+    }
+
+    // Mobilde: daha önce kullanıcı mock tercih ettiyse onu kullan
+    final wasMock = await _usage.isMockMode();
+    if (wasMock) {
+      _enterMockMode();
+      return;
+    }
+
+    // Mobilde gerçek AI'yı dene
+    await _tryRealAI();
   }
 
   /// Kullanıcı settings'ten manuel olarak AI'yı denemek isterse çağrılır.
@@ -102,11 +112,9 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       await _usage.markInitFinished();
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _initError = e.toString();
-        _mockFromFailure = true;
-      });
+      _mockFromFailure = true;
+      _initError = e.toString();
+      _enterMockMode();
     }
   }
 
@@ -138,11 +146,11 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 120),
           curve: Curves.easeOut,
         );
       }

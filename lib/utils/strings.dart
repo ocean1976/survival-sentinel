@@ -149,6 +149,18 @@ class AppStrings {
   final String onbErrorResumable;
   final String onbRetryButton;
 
+  // --- Premium ---
+  final String premiumCurrentStatus;
+  final String premiumFreeLabel;
+  final String premiumFeatureUnlimited;
+  final String premiumFeatureAllTopics;
+  final String premiumFeatureDarkMode;
+  final String premiumFeatureLifetime;
+  final String premiumTier1;
+  final String premiumTier2;
+  final String premiumTier3;
+  final String premiumTierNote;
+
   // --- Language dialog options ---
   final String langOptionTr;
   final String langOptionEn;
@@ -279,6 +291,16 @@ class AppStrings {
     required this.onbErrorTitle,
     required this.onbErrorResumable,
     required this.onbRetryButton,
+    required this.premiumCurrentStatus,
+    required this.premiumFreeLabel,
+    required this.premiumFeatureUnlimited,
+    required this.premiumFeatureAllTopics,
+    required this.premiumFeatureDarkMode,
+    required this.premiumFeatureLifetime,
+    required this.premiumTier1,
+    required this.premiumTier2,
+    required this.premiumTier3,
+    required this.premiumTierNote,
     required this.langOptionTr,
     required this.langOptionEn,
   });
@@ -430,6 +452,16 @@ class AppStrings {
     onbErrorTitle: '✗ HATA',
     onbErrorResumable: 'İndirme kaldığı yerden devam edebilir.',
     onbRetryButton: 'TEKRAR DENE',
+    premiumCurrentStatus: 'MEVCUT DURUM',
+    premiumFreeLabel: 'ÜCRETSİZ — SINIRLI ERİŞİM',
+    premiumFeatureUnlimited: 'Sınırsız soru hakkı',
+    premiumFeatureAllTopics: 'Tüm hayatta kalma konularına erişim',
+    premiumFeatureDarkMode: 'Karanlık mod (Bunker) ayarlardan açılabilir',
+    premiumFeatureLifetime: 'Tek seferlik ödeme — abonelik yok',
+    premiumTier1: 'DESTEKLEYİCİ',
+    premiumTier2: 'GELİŞTİRİCİ DESTEKÇİSİ',
+    premiumTier3: 'KORUYUCU',
+    premiumTierNote: 'Üç seçenek de aynı sınırsız erişimi verir.\nYüksek tier seçmek geliştiriciyi destekler.',
     langOptionTr: 'Türkçe',
     langOptionEn: 'English',
   );
@@ -582,6 +614,16 @@ class AppStrings {
     onbErrorTitle: '✗ ERROR',
     onbErrorResumable: 'The download can resume from where it stopped.',
     onbRetryButton: 'RETRY',
+    premiumCurrentStatus: 'CURRENT STATUS',
+    premiumFreeLabel: 'FREE — LIMITED ACCESS',
+    premiumFeatureUnlimited: 'Unlimited questions',
+    premiumFeatureAllTopics: 'Access to all survival topics',
+    premiumFeatureDarkMode: 'Dark mode (Bunker) available in settings',
+    premiumFeatureLifetime: 'One-time purchase — no subscription',
+    premiumTier1: 'SUPPORTER',
+    premiumTier2: 'DEVELOPER BACKER',
+    premiumTier3: 'GUARDIAN',
+    premiumTierNote: 'All three options give the same unlimited access.\nHigher tiers support the developer.',
     langOptionTr: 'Türkçe',
     langOptionEn: 'English',
   );

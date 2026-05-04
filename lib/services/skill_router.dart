@@ -1,99 +1,100 @@
 import 'package:flutter/services.dart';
 import '../models/skill.dart';
+import '../utils/text_utils.dart';
 
 class SkillRouter {
   final String language;
-  final List<Skill> _skills = [];
+  final Map<String, List<Skill>> _pools = {}; // 'tr' -> [...], 'en' -> [...]
   bool _loaded = false;
 
   SkillRouter({this.language = 'tr'});
 
+  static const _ids = [
+    'earthquake',
+    'fire',
+    'first_aid',
+    'water',
+    'shelter',
+    'flood',
+    'tornado',
+    'wildfire',
+    'tsunami',
+    'blizzard',
+    'heatstroke',
+    'fracture',
+    'drowning',
+    'lost_wilderness',
+    'signaling',
+    'nuclear',
+    'chemical_attack',
+    'pandemic',
+    'evacuation',
+    'blackout',
+    'general_survival',
+  ];
+
   Future<void> load() async {
     if (_loaded) return;
-
-    const ids = [
-      'earthquake',
-      'fire',
-      'first_aid',
-      'water',
-      'shelter',
-      'flood',
-      'tornado',
-      'wildfire',
-      'tsunami',
-      'blizzard',
-      'heatstroke',
-      'fracture',
-      'drowning',
-      'lost_wilderness',
-      'signaling',
-      'nuclear',
-      'chemical_attack',
-      'pandemic',
-      'evacuation',
-      'blackout',
-    ];
-    for (final id in ids) {
-      try {
-        final raw = await rootBundle.loadString('assets/skills/$language/$id.md');
-        _skills.add(Skill.parse(id, raw));
-      } catch (_) {
-        // Skill dosyası bulunamadı — sessizce atla
-      }
-    }
+    await _loadLanguage('tr');
+    await _loadLanguage('en');
     _loaded = true;
   }
 
+  Future<void> _loadLanguage(String lang) async {
+    final skills = <Skill>[];
+    for (final id in _ids) {
+      try {
+        final raw = await rootBundle.loadString('assets/skills/$lang/$id.md');
+        skills.add(Skill.parse(id, raw));
+      } catch (_) {
+        // Dosya yoksa atla
+      }
+    }
+    _pools[lang] = skills;
+  }
+
+  /// Mesajın diline ve içeriğine göre en iyi skill'i seç.
+  /// Dil otomatik tespit edilir.
   Skill? match(String query) {
-    if (_skills.isEmpty) return null;
-    final q = _normalize(query);
+    final detectedLang = TextUtils.detectLanguage(query);
+    final pool = _pools[detectedLang] ?? _pools[language] ?? [];
+    if (pool.isEmpty) return null;
 
     Skill? best;
     int bestScore = 0;
-    for (final skill in _skills) {
+    for (final skill in pool) {
       int score = 0;
       for (final kw in skill.keywords) {
         if (kw.isEmpty) continue;
-        final nkw = _normalize(kw);
-        if (nkw.isEmpty) continue;
-        if (q.contains(nkw)) score += nkw.length;
+        if (TextUtils.fuzzyContains(query, kw)) {
+          score += kw.length;
+        }
       }
       if (score > bestScore) {
         bestScore = score;
         best = skill;
       }
     }
-    return best;
-  }
 
-  /// Türkçe + İngilizce robust eşleşme için normalleştirme:
-  /// - küçük harfe çevirir (Türkçe kuralları)
-  /// - ı/İ/ç/ğ/ö/ş/ü → i/c/g/o/s/u
-  /// - alfanumerik olmayan karakterleri boşluğa çevirir (noktalama/emoji temizliği)
-  /// - birden çok boşluğu tek boşluğa indirir
-  static String _normalize(String input) {
-    var s = input.toLowerCase();
-    const replacements = {
-      'ı': 'i',
-      'İ': 'i',
-      'i̇': 'i',
-      'ğ': 'g',
-      'Ğ': 'g',
-      'ü': 'u',
-      'Ü': 'u',
-      'ş': 's',
-      'Ş': 's',
-      'ö': 'o',
-      'Ö': 'o',
-      'ç': 'c',
-      'Ç': 'c',
-      'â': 'a',
-      'î': 'i',
-      'û': 'u',
-    };
-    replacements.forEach((from, to) => s = s.replaceAll(from, to));
-    s = s.replaceAll(RegExp(r'[^a-z0-9\s]'), ' ');
-    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
-    return s;
+    // Tespit edilen dilde bulunamadıysa diğer dilde dene
+    if (best == null) {
+      final fallbackLang = detectedLang == 'en' ? 'tr' : 'en';
+      final fallbackPool = _pools[fallbackLang] ?? [];
+      for (final skill in fallbackPool) {
+        int score = 0;
+        for (final kw in skill.keywords) {
+          if (kw.isEmpty) continue;
+          if (TextUtils.fuzzyContains(query, kw)) {
+            score += kw.length;
+          }
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          best = skill;
+        }
+      }
+    }
+
+    return best;
   }
 }
