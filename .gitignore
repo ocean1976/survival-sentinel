@@ -45,3 +45,4 @@ app.*.map.json
 # Model binaries — downloaded at runtime, never committed
 *.gguf
 *.gguf.part
+.claude/
