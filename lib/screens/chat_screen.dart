@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../services/ai_service.dart';
 import '../services/skill_router.dart';
@@ -67,21 +66,10 @@ class _ChatScreenState extends State<ChatScreen> {
       _startSOSTicker();
     }
 
-    // Web platformda her zaman mock
-    if (kIsWeb) {
-      _enterMockMode();
-      return;
-    }
-
-    // Mobilde: daha önce kullanıcı mock tercih ettiyse onu kullan
-    final wasMock = await _usage.isMockMode();
-    if (wasMock) {
-      _enterMockMode();
-      return;
-    }
-
-    // Mobilde gerçek AI'yı dene
-    await _tryRealAI();
+    // Default: mock mode ile başla. Gerçek AI yalnızca Settings'ten
+    // kullanıcı manuel olarak tetikler. Native llama.cpp SIGSEGV
+    // Dart try/catch ile yakalanamaz — cihazı çökertir.
+    _enterMockMode();
   }
 
   /// Kullanıcı settings'ten manuel olarak AI'yı denemek isterse çağrılır.

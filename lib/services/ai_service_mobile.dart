@@ -3,19 +3,13 @@ import 'dart:io';
 import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Android tarafı için AI servisi.
+/// Android/iOS AI servisi — llama_cpp_dart v0.2.2 API.
 ///
-/// `LlamaParent` kullanıyoruz — model yükleme + inference arka plan
-/// isolate'inde yapılıyor. UI jank olmuyor; ayrıca Dart seviyesindeki
-/// istisnalar ayrı isolate'te tutuluyor. (Not: native SIGSEGV hâlâ
-/// tüm VM'i çökertir — mock fallback bunun için var.)
+/// `LlamaParent` isolate kullanır: model yükleme + inference arka planda.
+/// GemmaFormat ile prompt formatting kütüphane tarafında yapılır.
 class AIServicePlatform {
   static const String modelFileName = 'gemma-2-2b-it-Q4_K_M.gguf';
   static const int maxTokens = 384;
-  static const List<String> stopSequences = [
-    '<end_of_turn>',
-    '<start_of_turn>',
-  ];
 
   LlamaParent? _llama;
   bool _ready = false;
@@ -40,12 +34,7 @@ class AIServicePlatform {
 
     onProgress?.call(2, 3, 'İsolate başlatılıyor');
 
-    // Agresif minimal parametreler — S22 Ultra'da stabil kalmak için:
-    //   nCtx 512  (2048'den düşürüldü)
-    //   nBatch 128 (512'den)
-    //   nThreads 2
-    //   nGpuLayers 0 (Android GPU backend yok)
-    //   mmap on — model dosyasını heap'e kopyalama
+    // v0.2.2 API — named parameters
     final modelParams = ModelParams()
       ..nGpuLayers = 0
       ..useMemorymap = true
@@ -64,6 +53,7 @@ class AIServicePlatform {
       ..topP = 0.9
       ..topK = 40;
 
+    // v0.2.2: LlamaLoad uses named parameters
     final load = LlamaLoad(
       path: modelPath,
       modelParams: modelParams,
@@ -84,7 +74,6 @@ class AIServicePlatform {
     } catch (e) {
       _llama = null;
       _ready = false;
-      // Isolate'i temizlemeye çalış (başarısız olabilir, zararsız)
       parent.dispose().catchError((_) {});
       rethrow;
     }
@@ -99,37 +88,31 @@ class AIServicePlatform {
     final buf = StringBuffer();
     final completer = Completer<void>();
     StreamSubscription<String>? sub;
+    StreamSubscription<CompletionEvent>? completionSub;
 
     sub = llama.stream.listen((token) {
       buf.write(token);
-      final soFar = buf.toString();
-      if (stopSequences.any(soFar.contains)) {
-        if (!completer.isCompleted) completer.complete();
-      }
     });
 
-    // Completion event (isDone) ile de bitir
-    final completionSub = llama.completions.listen((event) {
+    // v0.2.2: completions emits CompletionEvent
+    completionSub = llama.completions.listen((event) {
       if (!completer.isCompleted) completer.complete();
     });
 
     try {
+      // v0.2.2: sendPrompt returns Future<String> (promptId)
       await llama.sendPrompt(formattedPrompt);
       await completer.future.timeout(
         const Duration(seconds: 120),
-        onTimeout: () => throw TimeoutException('Yanıt 120 saniyede tamamlanmadı'),
+        onTimeout: () =>
+            throw TimeoutException('Yanıt 120 saniyede tamamlanmadı'),
       );
     } finally {
       await sub.cancel();
       await completionSub.cancel();
     }
 
-    var out = buf.toString();
-    for (final stop in stopSequences) {
-      final idx = out.indexOf(stop);
-      if (idx >= 0) out = out.substring(0, idx);
-    }
-    return out.trim();
+    return buf.toString().trim();
   }
 
   void dispose() {

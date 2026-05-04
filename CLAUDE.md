@@ -3,7 +3,7 @@
 **Proje:** Survival Sentinel: Offline AI Survival Assistant  
 **App İsmi:** Haven Protocol: Survival AI (Subtitle: Offline Emergency Guide)  
 **Platform:** Android & iOS (Flutter/Dart)  
-**AI Model:** Google Gemma 4 (GGUF, on-device, offline)  
+**AI Model:** Google Gemma 2 2B IT Q4_K_M (current MVP) — Gemma 4 E2B planned for v1.1
 **Repo:** https://github.com/ocean1976/survival-sentinel  
 **Son Güncelleme:** Nisan 2026
 
@@ -26,7 +26,7 @@ Survival Sentinel, internet bağlantısı olmadan çalışan, afet ve acil durum
 ### 2.1 Tech Stack
 ```
 Framework:      Flutter (Dart)
-AI Model:       Google Gemma 4 (GGUF quantized, ~2-3 GB)
+AI Model:** Google Gemma 2 2B IT Q4_K_M (current MVP) — Gemma 4 E2B planned for v1.1
 AI Runtime:     llama_cpp_dart (v0.0.9+)
 State Mgmt:     setState (basit) veya Riverpod (ilerisi için)
 Local Storage:  shared_preferences + path_provider
