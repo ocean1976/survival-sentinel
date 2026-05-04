@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'screens/chat_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -5,7 +6,6 @@ import 'services/model_downloader.dart';
 import 'services/usage_service.dart';
 import 'utils/strings.dart';
 import 'utils/theme.dart';
-import 'widgets/lighthouse_icon.dart';
 
 void main() {
   runApp(const HavenProtocolApp());
@@ -53,7 +53,7 @@ class _AppRootState extends State<AppRoot> {
     final lang = await _usage.getLanguage();
     S.language.value = lang;
     final completed = await _usage.isOnboardingComplete();
-    final modelReady = await _downloader.isModelReady();
+    final modelReady = kIsWeb ? true : await _downloader.isModelReady();
     if (!mounted) return;
     setState(() => _ready = completed && modelReady);
   }
@@ -87,8 +87,6 @@ class _SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            LighthouseIcon(color: theme.primary),
-            const SizedBox(height: 16),
             Text(
               'HAVEN PROTOCOL',
               style: TextStyle(

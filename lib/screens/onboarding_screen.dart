@@ -4,7 +4,6 @@ import '../services/model_downloader.dart';
 import '../services/usage_service.dart';
 import '../utils/strings.dart';
 import '../utils/theme.dart';
-import '../widgets/lighthouse_icon.dart';
 
 enum _DownloadPhase { idle, checkingWifi, downloading, verifying, done, error }
 
@@ -216,8 +215,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
       child: Row(
         children: [
-          LighthouseIcon(color: _theme.primary),
-          const SizedBox(width: 10),
           Text(
             'HAVEN PROTOCOL',
             style: TextStyle(
