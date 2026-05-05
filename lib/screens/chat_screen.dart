@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../services/ai_service.dart';
 import '../services/skill_router.dart';
@@ -32,7 +33,6 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
   bool _isModelLoaded = false;
   bool _mockMode = false;
-  bool _mockFromFailure = false; // true only if user tried real AI and it failed
   bool _crashLoopDetected = false;
   String? _initError;
   final List<ChatMessage> _messages = [];
@@ -66,10 +66,12 @@ class _ChatScreenState extends State<ChatScreen> {
       _startSOSTicker();
     }
 
-    // Default: mock mode ile başla. Gerçek AI yalnızca Settings'ten
-    // kullanıcı manuel olarak tetikler. Native llama.cpp SIGSEGV
-    // Dart try/catch ile yakalanamaz — cihazı çökertir.
-    _enterMockMode();
+    // Web: her zaman mock. Mobil: gerçek AI dene, başarısızsa mock'a düş.
+    if (kIsWeb) {
+      _enterMockMode();
+    } else {
+      await _tryRealAI();
+    }
   }
 
   /// Kullanıcı settings'ten manuel olarak AI'yı denemek isterse çağrılır.
@@ -100,7 +102,6 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       await _usage.markInitFinished();
       if (!mounted) return;
-      _mockFromFailure = true;
       _initError = e.toString();
       _enterMockMode();
     }
@@ -303,7 +304,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Column(
                     children: [
                       _buildHeader(),
-                      if (_mockMode && _mockFromFailure) _buildMockBanner(),
+                      if (_mockMode) _buildMockBanner(),
+                      if (!_mockMode && _isModelLoaded) _buildAIActiveBanner(),
                       Expanded(
                         child: _isModelLoaded
                             ? _buildChatArea()
@@ -440,6 +442,23 @@ class _ChatScreenState extends State<ChatScreen> {
         S.current.mockBanner,
         style: TextStyle(
           color: _theme.critical,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAIActiveBanner() {
+    return Container(
+      width: double.infinity,
+      color: _theme.primary.withValues(alpha: 0.15),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: Text(
+        '✓ GEMMA 2 AI — GERÇEK MODEL AKTİF',
+        style: TextStyle(
+          color: _theme.primary,
           fontSize: 10,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
