@@ -26,6 +26,9 @@ jobs:
       uses: subosito/flutter-action@v2
       with:
         channel: 'stable'
+        # Sabit sürüm: proje Gradle 8.7 / AGP 8.3 ile uyumlu.
+        # En yeni stable Gradle 8.14+ istiyor ve build'i kırıyor.
+        flutter-version: '3.38.4'
     
     - name: Install dependencies
       run: flutter pub get
