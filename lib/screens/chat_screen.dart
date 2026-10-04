@@ -34,6 +34,9 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isModelLoaded = false;
   bool _mockMode = false;
   bool _crashLoopDetected = false;
+  // Test teşhisi: mock'a düşme sebebi ve son yanıt süresi banner'da görünür.
+  String? _lastAIError;
+  int? _lastResponseMs;
   String? _initError;
   final List<ChatMessage> _messages = [];
 
@@ -69,9 +72,23 @@ class _ChatScreenState extends State<ChatScreen> {
     // Web: her zaman mock. Mobil: gerçek AI dene, başarısızsa mock'a düş.
     if (kIsWeb) {
       _enterMockMode();
-    } else {
-      await _tryRealAI();
+      return;
     }
+
+    // Önceki açılışta init yarıda kaldıysa native crash olmuştur:
+    // otomatik tekrar deneme, mock modda aç. Kullanıcı Settings'ten
+    // "Gerçek AI'yı dene" ile manuel tetikleyebilir.
+    if (await _usage.didLastInitCrash()) {
+      if (!mounted) return;
+      setState(() {
+        _crashLoopDetected = true;
+        _lastAIError = 'Önceki açılışta model yüklenirken uygulama çöktü (native crash).';
+      });
+      await _enterMockMode();
+      return;
+    }
+
+    await _tryRealAI();
   }
 
   /// Kullanıcı settings'ten manuel olarak AI'yı denemek isterse çağrılır.
@@ -103,6 +120,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await _usage.markInitFinished();
       if (!mounted) return;
       _initError = e.toString();
+      _lastAIError = e.toString();
       _enterMockMode();
     }
   }
@@ -184,7 +202,10 @@ class _ChatScreenState extends State<ChatScreen> {
         skill: skill,
         language: S.language.value,
       );
+      final sw = Stopwatch()..start();
       final response = await _aiService.generateResponse(formattedPrompt);
+      sw.stop();
+      _lastResponseMs = sw.elapsedMilliseconds;
       await _usage.recordQuestion();
       await _syncUsage();
       if (!mounted) return;
@@ -439,7 +460,9 @@ class _ChatScreenState extends State<ChatScreen> {
       color: _theme.critical.withValues(alpha: 0.2),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Text(
-        S.current.mockBanner,
+        _lastAIError == null
+            ? S.current.mockBanner
+            : '${S.current.mockBanner}\nSEBEP: $_lastAIError',
         style: TextStyle(
           color: _theme.critical,
           fontSize: 10,
@@ -456,7 +479,9 @@ class _ChatScreenState extends State<ChatScreen> {
       color: _theme.primary.withValues(alpha: 0.15),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Text(
-        '✓ GEMMA 2 AI — GERÇEK MODEL AKTİF',
+        _lastResponseMs == null
+            ? '✓ GEMMA 2 AI — GERÇEK MODEL AKTİF'
+            : '✓ GEMMA 2 AI — GERÇEK MODEL AKTİF · son yanıt ${(_lastResponseMs! / 1000).toStringAsFixed(1)} sn',
         style: TextStyle(
           color: _theme.primary,
           fontSize: 10,
