@@ -41,15 +41,15 @@ class AIServicePlatform {
       ..vocabOnly = false;
 
     final contextParams = ContextParams()
-      ..nCtx = 512
-      ..nBatch = 128
-      ..nUbatch = 128
-      ..nThreads = 2
-      ..nThreadsBatch = 2
+      ..nCtx = 4096
+      ..nBatch = 512
+      ..nUbatch = 512
+      ..nThreads = 4
+      ..nThreadsBatch = 4
       ..nPredict = maxTokens;
 
     final samplerParams = SamplerParams()
-      ..temp = 0.7
+      ..temp = 0.5
       ..topP = 0.9
       ..topK = 40;
 
